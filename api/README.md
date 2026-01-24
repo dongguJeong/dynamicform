@@ -1,6 +1,8 @@
 # Dynamic Form API Server
 
-Node.js + Express 기반의 간단한 Echo API 서버입니다. 모든 API 요청을 받아서 그대로 응답으로 돌려줍니다.
+Node.js + Express 기반의 API 서버입니다.
+- Echo API: 모든 요청을 그대로 응답으로 반환
+- 폼 저장/관리: 커스텀 폼을 메모리에 저장하고 조회
 
 ## 시작하기
 
@@ -90,6 +92,43 @@ Content-Type: application/json
 }
 ```
 
+### 7. 폼 저장
+```bash
+POST /api/forms/save
+Content-Type: application/json
+
+{
+  "name": "회원가입 폼",
+  "config": "{\"title\":\"회원가입\",\"api\":\"/api/register\",\"content\":[...]}"
+}
+```
+
+### 8. 폼 목록 조회
+```bash
+GET /api/forms/list
+```
+
+### 9. 특정 폼 조회
+```bash
+GET /api/forms/FORM-1234567890
+```
+
+### 10. 폼 삭제
+```bash
+DELETE /api/forms/FORM-1234567890
+```
+
+### 11. 커스텀 폼 제출
+```bash
+POST /api/custom-form
+Content-Type: application/json
+
+{
+  "username": "test",
+  "email": "test@example.com"
+}
+```
+
 ## 응답 형식
 
 모든 API는 다음 형식의 응답을 반환합니다:
@@ -118,7 +157,18 @@ Content-Type: application/json
 - **CORS 지원**: 모든 오리진에서 요청 가능
 - **요청 로깅**: 모든 요청의 메서드, 경로, 헤더, 바디를 콘솔에 출력
 - **Echo 응답**: 받은 요청 정보를 그대로 응답에 포함
+- **폼 관리**: 커스텀 폼을 메모리에 저장/조회/삭제 (재시작 시 초기화)
 - **자동 재시작**: `--watch` 플래그로 파일 변경 시 자동 재시작
+
+## 폼 저장소
+
+현재는 메모리(Map)에 저장되므로 서버 재시작 시 데이터가 사라집니다.
+실제 운영 환경에서는 데이터베이스(MongoDB, PostgreSQL 등)를 사용하세요.
+
+```javascript
+// 서버 메모리에 저장
+const savedForms = new Map();
+```
 
 ## 개발 모드
 

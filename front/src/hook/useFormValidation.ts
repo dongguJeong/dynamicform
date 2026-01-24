@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { FormField, ValidationError } from "../types/type";
+import { FormField, ValidationError, FormData as FormDataType } from "../types/type";
 
 export const useFormValidation = () => {
   const validateField = useCallback(
@@ -69,7 +69,7 @@ export const useFormValidation = () => {
   );
 
   const validateForm = useCallback(
-    (formData: FormData, fields: FormField[]): ValidationError => {
+    (formData: FormDataType, fields: FormField[]): ValidationError => {
       const errors: ValidationError = {};
 
       fields.forEach((field) => {

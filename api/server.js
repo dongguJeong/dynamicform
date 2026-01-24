@@ -186,6 +186,159 @@ app.post('/api/modalselect/test', (req, res) => {
   res.json(response);
 });
 
+// ===== 폼 저장/불러오기 =====
+// 메모리에 저장 (실제로는 DB 사용 권장)
+const savedForms = new Map();
+
+// 폼 저장
+app.post('/api/forms/save', (req, res) => {
+  const response = createEchoResponse(req);
+  const { name, config } = req.body;
+
+  if (!name || !config) {
+    return res.status(400).json({
+      success: false,
+      message: 'name과 config는 필수입니다.'
+    });
+  }
+
+  const formId = `FORM-${Date.now()}`;
+  savedForms.set(formId, {
+    id: formId,
+    name,
+    config,
+    createdAt: new Date().toISOString()
+  });
+
+  response.data = {
+    formId,
+    name,
+    message: '폼이 성공적으로 저장되었습니다.'
+  };
+  res.json(response);
+});
+
+// 폼 목록 조회
+app.get('/api/forms/list', (req, res) => {
+  const formList = Array.from(savedForms.values()).map(form => ({
+    id: form.id,
+    name: form.name,
+    createdAt: form.createdAt
+  }));
+
+  res.json({
+    success: true,
+    data: formList,
+    count: formList.length
+  });
+});
+
+// 특정 폼 조회
+app.get('/api/forms/:formId', (req, res) => {
+  const { formId } = req.params;
+  const form = savedForms.get(formId);
+
+  if (!form) {
+    return res.status(404).json({
+      success: false,
+      message: '폼을 찾을 수 없습니다.'
+    });
+  }
+
+  res.json({
+    success: true,
+    data: form
+  });
+});
+
+// 폼 삭제
+app.delete('/api/forms/:formId', (req, res) => {
+  const { formId } = req.params;
+  const deleted = savedForms.delete(formId);
+
+  if (!deleted) {
+    return res.status(404).json({
+      success: false,
+      message: '폼을 찾을 수 없습니다.'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: '폼이 삭제되었습니다.'
+  });
+});
+
+// 커스텀 폼 제출 (저장된 폼 데이터 처리)
+app.post('/api/custom-form', (req, res) => {
+  const response = createEchoResponse(req);
+  response.data = {
+    submissionId: `SUB-${Date.now()}`,
+    message: '커스텀 폼 데이터가 성공적으로 제출되었습니다.',
+    ...req.body
+  };
+  res.json(response);
+});
+
+// ===== API Select용 데이터 엔드포인트 =====
+
+// 계정 목록
+app.get('/api/accounts/list', (req, res) => {
+  const accounts = [
+    { accountId: 'ACC001', accountName: 'admin@company.com', department: 'IT', status: 'active' },
+    { accountId: 'ACC002', accountName: 'user1@company.com', department: 'Sales', status: 'active' },
+    { accountId: 'ACC003', accountName: 'user2@company.com', department: 'Marketing', status: 'active' },
+    { accountId: 'ACC004', accountName: 'user3@company.com', department: 'HR', status: 'inactive' },
+    { accountId: 'ACC005', accountName: 'user4@company.com', department: 'Finance', status: 'active' },
+    { accountId: 'ACC006', accountName: 'dev1@company.com', department: 'Development', status: 'active' },
+    { accountId: 'ACC007', accountName: 'dev2@company.com', department: 'Development', status: 'active' },
+    { accountId: 'ACC008', accountName: 'manager@company.com', department: 'Management', status: 'active' },
+  ];
+
+  res.json({
+    success: true,
+    data: accounts,
+    count: accounts.length
+  });
+});
+
+// 서버 타입 목록
+app.get('/api/servers/types', (req, res) => {
+  const serverTypes = [
+    { typeId: 'WEB01', typeName: 'Apache Web Server', category: 'web', specs: '4 CPU, 8GB RAM' },
+    { typeId: 'WEB02', typeName: 'Nginx Web Server', category: 'web', specs: '4 CPU, 8GB RAM' },
+    { typeId: 'APP01', typeName: 'Node.js Application Server', category: 'app', specs: '8 CPU, 16GB RAM' },
+    { typeId: 'APP02', typeName: 'Java Application Server', category: 'app', specs: '8 CPU, 16GB RAM' },
+    { typeId: 'DB01', typeName: 'MySQL Database', category: 'database', specs: '16 CPU, 32GB RAM' },
+    { typeId: 'DB02', typeName: 'PostgreSQL Database', category: 'database', specs: '16 CPU, 32GB RAM' },
+    { typeId: 'DB03', typeName: 'MongoDB Database', category: 'database', specs: '8 CPU, 16GB RAM' },
+    { typeId: 'CACHE01', typeName: 'Redis Cache', category: 'cache', specs: '4 CPU, 16GB RAM' },
+  ];
+
+  res.json({
+    success: true,
+    data: serverTypes,
+    count: serverTypes.length
+  });
+});
+
+// 리소스 타입 목록
+app.get('/api/resources/types', (req, res) => {
+  const resourceTypes = [
+    { id: 'CPU', name: 'CPU 코어', unit: 'cores', maxAllocation: 32 },
+    { id: 'RAM', name: 'RAM 메모리', unit: 'GB', maxAllocation: 128 },
+    { id: 'DISK', name: '디스크 저장소', unit: 'TB', maxAllocation: 10 },
+    { id: 'GPU', name: 'GPU', unit: 'units', maxAllocation: 4 },
+    { id: 'BANDWIDTH', name: '네트워크 대역폭', unit: 'Gbps', maxAllocation: 10 },
+  ];
+
+  res.json({
+    success: true,
+    data: resourceTypes,
+    count: resourceTypes.length
+  });
+});
+
 // ===== 범용 Echo 엔드포인트 (모든 경로) =====
 app.all('/api/*', (req, res) => {
   const response = createEchoResponse(req);
@@ -217,8 +370,17 @@ app.get('/', (req, res) => {
       'POST /api/daterange/test',
       'POST /api/daterange/simple',
       'POST /api/modalselect/test',
+      'POST /api/forms/save',
+      'GET /api/forms/list',
+      'GET /api/forms/:formId',
+      'DELETE /api/forms/:formId',
+      'POST /api/custom-form',
+      'GET /api/accounts/list',
+      'GET /api/servers/types',
+      'GET /api/resources/types',
       'GET /health'
-    ]
+    ],
+    savedFormsCount: savedForms.size
   });
 });
 

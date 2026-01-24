@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
-import axios, { AxiosInstance, AxiosError } from "axios";
-import { ApiRequestBody, ApiConfig, FormConfig } from "../types/type";
+import axios, { AxiosInstance } from "axios";
+import { ApiRequestBody, ApiConfig, FormConfig, FormData as FormDataType } from "../types/type";
 
 // axios 인스턴스 생성 (선택사항: 기본 설정 추가 가능)
 const createAxiosInstance = (
@@ -29,7 +29,7 @@ export const useApiSubmit = (baseURL?: string, timeout: number = 10000) => {
   const submitSingleApi = useCallback(
     async (
       url: string,
-      formData: FormData,
+      formData: FormDataType,
       fieldMapping?: Record<string, string>,
     ) => {
       // fieldMapping이 있으면 필드명을 변환
@@ -59,7 +59,7 @@ export const useApiSubmit = (baseURL?: string, timeout: number = 10000) => {
    * 여러 API로 데이터 전송 (각 API별로 필드를 분류해서 전송)
    */
   const submitMultipleApis = useCallback(
-    async (apis: ApiConfig[], formData: FormData) => {
+    async (apis: ApiConfig[], formData: FormDataType) => {
       console.log("🔄 submitMultipleApis 호출:", { apis, formData });
 
       const results: Record<string, any> = {};
@@ -157,7 +157,7 @@ export const useApiSubmit = (baseURL?: string, timeout: number = 10000) => {
    * FormConfig에 따라 적절한 방식으로 데이터 전송
    */
   const submitForm = useCallback(
-    async (config: FormConfig, formData: FormData) => {
+    async (config: FormConfig, formData: FormDataType) => {
       // API가 여러 개인 경우
       if (config.apis && config.apis.length > 0) {
         return await submitMultipleApis(config.apis, formData);

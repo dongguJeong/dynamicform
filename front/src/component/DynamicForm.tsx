@@ -1,13 +1,13 @@
 import React, { useState, useCallback } from "react";
 import { FormFieldComponent } from "./FormFieldComponent";
 import "./DynamicForm.css";
-import { FormConfig, ValidationError } from "../types/type";
+import { FormConfig, ValidationError, FormData as FormDataType } from "../types/type";
 import useApiSubmit from "../hook/useApiSubmint";
 import { useFormValidation } from "../hook/useFormValidation";
 
 interface DynamicFormProps {
   config: FormConfig;
-  onSuccess?: (data: FormData, response?: any) => void;
+  onSuccess?: (data: FormDataType, response?: any) => void;
   onError?: (error: string) => void;
 }
 
@@ -16,51 +16,8 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   onSuccess,
   onError,
 }) => {
-  const [formData, setFormData] = useState<FormData>(() => {
-    const initialData: FormData = {
-      append: function (name: string, value: string | Blob): void {
-        throw new Error("Function not implemented.");
-      },
-      delete: function (name: string): void {
-        throw new Error("Function not implemented.");
-      },
-      get: function (name: string): FormDataEntryValue | null {
-        throw new Error("Function not implemented.");
-      },
-      getAll: function (name: string): FormDataEntryValue[] {
-        throw new Error("Function not implemented.");
-      },
-      has: function (name: string): boolean {
-        throw new Error("Function not implemented.");
-      },
-      set: function (name: string, value: string | Blob): void {
-        throw new Error("Function not implemented.");
-      },
-      forEach: function (
-        callbackfn: (
-          value: FormDataEntryValue,
-          key: string,
-          parent: FormData,
-        ) => void,
-        thisArg?: any,
-      ): void {
-        throw new Error("Function not implemented.");
-      },
-      entries: function (): FormDataIterator<[string, FormDataEntryValue]> {
-        throw new Error("Function not implemented.");
-      },
-      keys: function (): FormDataIterator<string> {
-        throw new Error("Function not implemented.");
-      },
-      values: function (): FormDataIterator<FormDataEntryValue> {
-        throw new Error("Function not implemented.");
-      },
-      [Symbol.iterator]: function (): FormDataIterator<
-        [string, FormDataEntryValue]
-      > {
-        throw new Error("Function not implemented.");
-      },
-    };
+  const [formData, setFormData] = useState<FormDataType>(() => {
+    const initialData: FormDataType = {};
     config.content.forEach((field) => {
       if (field.type === "daterange") {
         initialData[field.id] = field.value || { startDate: "", endDate: "" };
@@ -142,50 +99,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         }
 
         // 폼 초기화
-        const initialData: FormData = {
-          append: function (name: string, value: string | Blob): void {
-            throw new Error("Function not implemented.");
-          },
-          delete: function (name: string): void {
-            throw new Error("Function not implemented.");
-          },
-          get: function (name: string): FormDataEntryValue | null {
-            throw new Error("Function not implemented.");
-          },
-          getAll: function (name: string): FormDataEntryValue[] {
-            throw new Error("Function not implemented.");
-          },
-          has: function (name: string): boolean {
-            throw new Error("Function not implemented.");
-          },
-          set: function (name: string, value: string | Blob): void {
-            throw new Error("Function not implemented.");
-          },
-          forEach: function (
-            callbackfn: (
-              value: FormDataEntryValue,
-              key: string,
-              parent: FormData,
-            ) => void,
-            thisArg?: any,
-          ): void {
-            throw new Error("Function not implemented.");
-          },
-          entries: function (): FormDataIterator<[string, FormDataEntryValue]> {
-            throw new Error("Function not implemented.");
-          },
-          keys: function (): FormDataIterator<string> {
-            throw new Error("Function not implemented.");
-          },
-          values: function (): FormDataIterator<FormDataEntryValue> {
-            throw new Error("Function not implemented.");
-          },
-          [Symbol.iterator]: function (): FormDataIterator<
-            [string, FormDataEntryValue]
-          > {
-            throw new Error("Function not implemented.");
-          },
-        };
+        const initialData: FormDataType = {};
         config.content.forEach((field) => {
           if (field.type === "daterange") {
             initialData[field.id] = field.value || {

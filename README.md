@@ -1,6 +1,25 @@
 # Dynamic Form
 
-React + TypeScript + Bootstrap 기반의 동적 폼 애플리케이션과 Node.js Echo API 서버
+React + TypeScript + Bootstrap 기반의 동적 폼 애플리케이션과 Node.js API 서버
+
+드래그 앤 드롭으로 커스텀 폼을 만들고, 서버에 저장하여 실제로 사용할 수 있는 폼 빌더 시스템입니다.
+
+## 주요 기능
+
+### 1. DynamicForm 컴포넌트
+- 12가지 필드 타입 지원 (text, select, daterange, modalselect 등)
+- 단일/다중 API 전송
+- 실시간 유효성 검증
+
+### 2. 폼 빌더
+- 드래그 앤 드롭으로 필드 순서 조정
+- 필드 추가/수정/삭제
+- 서버에 JSON 형태로 저장
+
+### 3. 폼 테스트
+- 저장된 폼 불러오기
+- 실제 폼 제출 테스트
+- JSON 설정 미리보기
 
 ## 기술 스택
 

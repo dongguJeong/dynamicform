@@ -10,7 +10,8 @@ export type FieldType =
   | "password"
   | "date"
   | "daterange"
-  | "modalselect";
+  | "modalselect"
+  | "apiselect"; // API에서 옵션을 가져오는 select
 
 export interface SelectOption {
   label: string;
@@ -37,6 +38,11 @@ export interface FieldOptions extends React.CSSProperties {
   // daterange용
   periodOptions?: ("3months" | "6months" | "12months")[]; // 표시할 기간 버튼들
   showAllCheckbox?: boolean; // "전체" 체크박스 표시 여부
+
+  // apiselect용
+  apiUrl?: string; // 옵션을 가져올 API URL
+  apiLabelKey?: string; // 응답 데이터에서 라벨로 사용할 키 (기본: "label")
+  apiValueKey?: string; // 응답 데이터에서 값으로 사용할 키 (기본: "value")
 
   // HTML 속성
   disabled?: boolean;
@@ -97,4 +103,17 @@ export interface ValidationError {
 // API 요청 시 보낼 데이터
 export interface ApiRequestBody {
   [key: string]: any;
+}
+
+// 폼 코드 (각 폼 유형이 요구하는 필수 필드 정의)
+export interface FormCode {
+  code: string; // 폼 코드 (예: "account-extension", "account-update")
+  name: string; // 폼 이름 (예: "계정 기간 연장 신청")
+  description?: string; // 설명
+  requiredFields: FormField[]; // 필수 필드 목록
+}
+
+// 폼 설정에 폼 코드 추가
+export interface FormConfigWithCodes extends FormConfig {
+  formCodes?: string[]; // 선택된 폼 코드들
 }
