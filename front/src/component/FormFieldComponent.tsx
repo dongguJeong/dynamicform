@@ -9,6 +9,7 @@ import { CheckboxField } from "./CheckboxField";
 import { RadioField } from "./RadioField";
 import { ModalSelectField } from "./ModalSelectField";
 import { InputField } from "./InputField";
+import { ServerGroupChangeField } from "./ServerGroupChangeField";
 
 interface FormFieldComponentProps {
   field: FormField;
@@ -124,6 +125,16 @@ export const FormFieldComponent: React.FC<FormFieldComponentProps> = ({
           <ModalSelectField
             field={field}
             value={value}
+            onChange={onChange}
+          />
+        );
+
+      case "servergroupchange":
+        return (
+          <ServerGroupChangeField
+            field={field}
+            value={value}
+            hasError={hasError}
             onChange={onChange}
           />
         );

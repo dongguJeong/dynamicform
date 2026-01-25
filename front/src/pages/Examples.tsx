@@ -3,8 +3,8 @@ import { FormConfig, FormData as FormDataType } from "../types/type";
 import DynamicForm from "../component/DynamicForm";
 
 const Examples: React.FC = () => {
+  /*
   // ===== 예제 1: 단일 API 사용 (기존 방식) =====
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const singleApiFormConfig: FormConfig = {
     title: "서버 선택 - 단일 API",
     description: "모든 필드를 하나의 API로 전송합니다.",
@@ -38,11 +38,12 @@ const Examples: React.FC = () => {
       },
     ],
   };
+  */
 
+  /*
   // ===== 예제 2: 여러 API 사용 (새로운 방식) =====
   // 요청 정보는 /api/request로
   // 서버 설정은 /api/server로 각각 전송
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const multiApiFormConfig: FormConfig = {
     title: "배포 요청 - 여러 API",
     description: "필드 그룹별로 다른 API로 전송됩니다.",
@@ -155,6 +156,7 @@ const Examples: React.FC = () => {
       },
     ],
   };
+  */
 
   // ===== 예제 9: Modal Select 테스트 =====
   const modalSelectTestConfig: FormConfig = {

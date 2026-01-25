@@ -189,6 +189,7 @@ app.post('/api/modalselect/test', (req, res) => {
 // ===== 폼 저장/불러오기 =====
 // 메모리에 저장 (실제로는 DB 사용 권장)
 const savedForms = new Map();
+const formSubmissions = new Map();
 
 // 폼 저장
 app.post('/api/forms/save', (req, res) => {
@@ -230,6 +231,160 @@ app.get('/api/forms/list', (req, res) => {
     success: true,
     data: formList,
     count: formList.length
+  });
+});
+
+// ===== 폼 제출 관리 (먼저 정의하여 :formId보다 우선 매칭) =====
+
+// 폼 제출
+app.post('/api/forms/submissions', (req, res) => {
+  const { formId, formName, data, approvalFlow } = req.body;
+
+  if (!data) {
+    return res.status(400).json({
+      success: false,
+      message: 'data는 필수입니다.'
+    });
+  }
+
+  const submissionId = `SUB-${Date.now()}`;
+  const submission = {
+    id: submissionId,
+    formId: formId || null,
+    formName: formName || '제목 없음',
+    data,
+    approvalFlow: approvalFlow || null,
+    status: 'pending',
+    submittedBy: 'user@company.com', // 실제로는 인증된 사용자 정보 사용
+    submittedByName: '홍길동',
+    submittedAt: new Date().toISOString(),
+    processedAt: null
+  };
+
+  formSubmissions.set(submissionId, submission);
+
+  res.status(201).json({
+    success: true,
+    data: {
+      id: submissionId,
+      formId: submission.formId,
+      formName: submission.formName,
+      status: submission.status,
+      submittedAt: submission.submittedAt
+    },
+    message: '폼이 성공적으로 제출되었습니다.'
+  });
+});
+
+// 제출 목록 조회
+app.get('/api/forms/submissions', (req, res) => {
+  const { status, formId, page = 1, limit = 20 } = req.query;
+
+  let submissions = Array.from(formSubmissions.values());
+
+  // 필터링
+  if (status) {
+    submissions = submissions.filter(s => s.status === status);
+  }
+  if (formId) {
+    submissions = submissions.filter(s => s.formId === formId);
+  }
+
+  // 최신순 정렬
+  submissions.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+  // 페이지네이션
+  const pageNum = parseInt(page);
+  const limitNum = parseInt(limit);
+  const startIndex = (pageNum - 1) * limitNum;
+  const endIndex = startIndex + limitNum;
+  const paginatedSubmissions = submissions.slice(startIndex, endIndex);
+
+  const submissionList = paginatedSubmissions.map(s => ({
+    id: s.id,
+    formId: s.formId,
+    formName: s.formName,
+    status: s.status,
+    submittedBy: s.submittedBy,
+    submittedByName: s.submittedByName,
+    submittedAt: s.submittedAt
+  }));
+
+  res.json({
+    success: true,
+    data: submissionList,
+    pagination: {
+      page: pageNum,
+      limit: limitNum,
+      total: submissions.length,
+      totalPages: Math.ceil(submissions.length / limitNum)
+    }
+  });
+});
+
+// 특정 제출 조회
+app.get('/api/forms/submissions/:id', (req, res) => {
+  const { id } = req.params;
+  const submission = formSubmissions.get(id);
+
+  if (!submission) {
+    return res.status(404).json({
+      success: false,
+      message: '제출 데이터를 찾을 수 없습니다.'
+    });
+  }
+
+  res.json({
+    success: true,
+    data: submission
+  });
+});
+
+// 제출 상태 변경
+app.patch('/api/forms/submissions/:id/status', (req, res) => {
+  const { id } = req.params;
+  const { status, statusMessage } = req.body;
+
+  const submission = formSubmissions.get(id);
+
+  if (!submission) {
+    return res.status(404).json({
+      success: false,
+      message: '제출 데이터를 찾을 수 없습니다.'
+    });
+  }
+
+  submission.status = status;
+  submission.statusMessage = statusMessage || null;
+
+  if (status === 'approved' || status === 'rejected' || status === 'completed') {
+    submission.processedAt = new Date().toISOString();
+  }
+
+  formSubmissions.set(id, submission);
+
+  res.json({
+    success: true,
+    data: submission,
+    message: '상태가 업데이트되었습니다.'
+  });
+});
+
+// 제출 삭제
+app.delete('/api/forms/submissions/:id', (req, res) => {
+  const { id } = req.params;
+  const deleted = formSubmissions.delete(id);
+
+  if (!deleted) {
+    return res.status(404).json({
+      success: false,
+      message: '제출 데이터를 찾을 수 없습니다.'
+    });
+  }
+
+  res.json({
+    success: true,
+    message: '제출 데이터가 삭제되었습니다.'
   });
 });
 
@@ -281,6 +436,198 @@ app.post('/api/custom-form', (req, res) => {
 });
 
 // ===== API Select용 데이터 엔드포인트 =====
+
+// 서버 그룹 목록
+app.get('/api/server-groups/list', (req, res) => {
+  const serverGroups = [
+    {
+      id: 'SG001',
+      name: 'Web Servers',
+      description: '웹 서버 그룹',
+      servers: ['web-01', 'web-02', 'web-03']
+    },
+    {
+      id: 'SG002',
+      name: 'Database Servers',
+      description: '데이터베이스 서버 그룹',
+      servers: ['db-master', 'db-slave-01', 'db-slave-02']
+    },
+    {
+      id: 'SG003',
+      name: 'Application Servers',
+      description: '애플리케이션 서버 그룹',
+      servers: ['app-01', 'app-02', 'app-03', 'app-04']
+    },
+    {
+      id: 'SG004',
+      name: 'Cache Servers',
+      description: '캐시 서버 그룹',
+      servers: ['redis-01', 'redis-02', 'memcached-01']
+    },
+    {
+      id: 'SG005',
+      name: 'Development Servers',
+      description: '개발 서버 그룹',
+      servers: ['dev-01', 'dev-02', 'dev-03']
+    },
+    {
+      id: 'SG006',
+      name: 'Staging Servers',
+      description: '스테이징 서버 그룹',
+      servers: ['stage-01', 'stage-02']
+    },
+    {
+      id: 'SG007',
+      name: 'Production Servers',
+      description: '운영 서버 그룹',
+      servers: ['prod-01', 'prod-02', 'prod-03', 'prod-04', 'prod-05']
+    },
+    {
+      id: 'SG008',
+      name: 'Monitoring Servers',
+      description: '모니터링 서버 그룹',
+      servers: ['monitor-01', 'grafana-01', 'prometheus-01']
+    }
+  ];
+
+  res.json({
+    success: true,
+    data: serverGroups,
+    count: serverGroups.length
+  });
+});
+
+// 사용자 목록 (서버 그룹 정보 포함)
+app.get('/api/users/list', (req, res) => {
+  const users = [
+    {
+      id: 'USR001',
+      name: '김철수',
+      email: 'kim@company.com',
+      department: 'IT',
+      position: '팀장',
+      serverGroups: ['SG001', 'SG003', 'SG007', 'SG008']
+    },
+    {
+      id: 'USR002',
+      name: '이영희',
+      email: 'lee@company.com',
+      department: 'Development',
+      position: '개발자',
+      serverGroups: ['SG001', 'SG003', 'SG005']
+    },
+    {
+      id: 'USR003',
+      name: '박민수',
+      email: 'park@company.com',
+      department: 'Development',
+      position: '개발자',
+      serverGroups: ['SG002', 'SG003', 'SG005']
+    },
+    {
+      id: 'USR004',
+      name: '최지은',
+      email: 'choi@company.com',
+      department: 'DevOps',
+      position: '엔지니어',
+      serverGroups: ['SG001', 'SG002', 'SG003', 'SG004', 'SG006', 'SG007', 'SG008']
+    },
+    {
+      id: 'USR005',
+      name: '정승호',
+      email: 'jung@company.com',
+      department: 'Development',
+      position: '시니어 개발자',
+      serverGroups: ['SG003', 'SG005', 'SG006']
+    },
+    {
+      id: 'USR006',
+      name: '강미영',
+      email: 'kang@company.com',
+      department: 'QA',
+      position: '테스터',
+      serverGroups: ['SG005', 'SG006']
+    },
+    {
+      id: 'USR007',
+      name: '윤서준',
+      email: 'yoon@company.com',
+      department: 'Development',
+      position: '주니어 개발자',
+      serverGroups: ['SG005']
+    },
+    {
+      id: 'USR008',
+      name: '한지민',
+      email: 'han@company.com',
+      department: 'IT',
+      position: '시스템 관리자',
+      serverGroups: ['SG001', 'SG002', 'SG007', 'SG008']
+    }
+  ];
+
+  res.json({
+    success: true,
+    data: users,
+    count: users.length
+  });
+});
+
+// 특정 사용자의 서버 그룹 조회
+app.get('/api/users/:userId/server-groups', (req, res) => {
+  const { userId } = req.params;
+
+  // 실제로는 DB에서 조회
+  const users = [
+    { id: 'USR001', serverGroups: ['SG001', 'SG003', 'SG007', 'SG008'] },
+    { id: 'USR002', serverGroups: ['SG001', 'SG003', 'SG005'] },
+    { id: 'USR003', serverGroups: ['SG002', 'SG003', 'SG005'] },
+    { id: 'USR004', serverGroups: ['SG001', 'SG002', 'SG003', 'SG004', 'SG006', 'SG007', 'SG008'] },
+    { id: 'USR005', serverGroups: ['SG003', 'SG005', 'SG006'] },
+    { id: 'USR006', serverGroups: ['SG005', 'SG006'] },
+    { id: 'USR007', serverGroups: ['SG005'] },
+    { id: 'USR008', serverGroups: ['SG001', 'SG002', 'SG007', 'SG008'] }
+  ];
+
+  const user = users.find(u => u.id === userId);
+
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      message: '사용자를 찾을 수 없습니다.'
+    });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      userId: user.id,
+      serverGroups: user.serverGroups
+    }
+  });
+});
+
+// 직원 목록 (승인 플로우용)
+app.get('/api/employees/list', (req, res) => {
+  const employees = [
+    { id: 'EMP001', name: '김철수', email: 'kim@company.com', department: 'IT', position: '팀장', avatar: null },
+    { id: 'EMP002', name: '이영희', email: 'lee@company.com', department: 'HR', position: '부장', avatar: null },
+    { id: 'EMP003', name: '박민수', email: 'park@company.com', department: 'Sales', position: '과장', avatar: null },
+    { id: 'EMP004', name: '최지은', email: 'choi@company.com', department: 'Marketing', position: '대리', avatar: null },
+    { id: 'EMP005', name: '정승호', email: 'jung@company.com', department: 'Finance', position: '차장', avatar: null },
+    { id: 'EMP006', name: '강미영', email: 'kang@company.com', department: 'Development', position: '팀장', avatar: null },
+    { id: 'EMP007', name: '윤서준', email: 'yoon@company.com', department: 'Management', position: '이사', avatar: null },
+    { id: 'EMP008', name: '한지민', email: 'han@company.com', department: 'IT', position: '사원', avatar: null },
+    { id: 'EMP009', name: '오준석', email: 'oh@company.com', department: 'Development', position: '선임', avatar: null },
+    { id: 'EMP010', name: '신혜원', email: 'shin@company.com', department: 'HR', position: '팀장', avatar: null },
+  ];
+
+  res.json({
+    success: true,
+    data: employees,
+    count: employees.length
+  });
+});
 
 // 계정 목록
 app.get('/api/accounts/list', (req, res) => {
@@ -375,6 +722,7 @@ app.get('/', (req, res) => {
       'GET /api/forms/:formId',
       'DELETE /api/forms/:formId',
       'POST /api/custom-form',
+      'GET /api/employees/list',
       'GET /api/accounts/list',
       'GET /api/servers/types',
       'GET /api/resources/types',

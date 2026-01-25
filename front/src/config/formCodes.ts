@@ -44,6 +44,19 @@ export const FORM_CODES: FormCode[] = [
         },
       },
     ],
+    optionalFieldIds: [
+      "accountId",
+      "accountName",
+      "requestTitle",
+      "requestDescription",
+      "priority",
+      "department",
+      "requesterName",
+      "requesterEmail",
+      "requesterPhone",
+      "notes",
+      "urgency",
+    ],
   },
   {
     code: "account-update",
@@ -90,6 +103,19 @@ export const FORM_CODES: FormCode[] = [
           maxLength: 500,
         },
       },
+    ],
+    optionalFieldIds: [
+      "accountId",
+      "accountName",
+      "requestTitle",
+      "requestDescription",
+      "priority",
+      "department",
+      "requesterName",
+      "requesterEmail",
+      "requesterPhone",
+      "notes",
+      "urgency",
     ],
   },
   {
@@ -155,6 +181,19 @@ export const FORM_CODES: FormCode[] = [
         },
       },
     ],
+    optionalFieldIds: [
+      "serverName",
+      "usagePeriod",
+      "requestTitle",
+      "requestDescription",
+      "priority",
+      "department",
+      "requesterName",
+      "requesterEmail",
+      "requesterPhone",
+      "notes",
+      "urgency",
+    ],
   },
   {
     code: "resource-allocation",
@@ -184,6 +223,57 @@ export const FORM_CODES: FormCode[] = [
         },
       },
     ],
+    optionalFieldIds: [
+      "resourceAmount",
+      "requestTitle",
+      "requestDescription",
+      "requestReason",
+      "priority",
+      "department",
+      "requesterName",
+      "requesterEmail",
+      "requesterPhone",
+      "notes",
+      "urgency",
+      "environment",
+    ],
+  },
+  {
+    code: "server-group-change",
+    name: "서버 그룹 변경 요청",
+    description: "사용자의 서버 그룹 접근 권한을 변경하는 신청서",
+    requiredFields: [
+      {
+        id: "serverGroupChanges",
+        type: "servergroupchange",
+        label: "서버 그룹 변경 요청",
+        required: true,
+        helperText: "변경할 사용자와 목표 서버 그룹을 선택하세요",
+        options: {},
+      },
+      {
+        id: "changeReason",
+        type: "textarea",
+        label: "변경 사유",
+        required: true,
+        helperText: "서버 그룹 변경이 필요한 사유를 상세히 작성하세요",
+        options: {
+          placeholder: "변경 사유를 입력하세요",
+          rows: 4,
+          maxLength: 1000,
+        },
+      },
+    ],
+    optionalFieldIds: [
+      "requestTitle",
+      "priority",
+      "department",
+      "requesterName",
+      "requesterEmail",
+      "requesterPhone",
+      "notes",
+      "urgency",
+    ],
   },
 ];
 
@@ -209,4 +299,18 @@ export const mergeRequiredFields = (formCodes: string[]) => {
   });
 
   return Array.from(fieldMap.values());
+};
+
+// 여러 폼 코드의 선택적 필드 ID를 병합 (중복 제거)
+export const mergeOptionalFieldIds = (formCodes: string[]): string[] => {
+  const fieldIdSet = new Set<string>();
+
+  formCodes.forEach((code) => {
+    const formCode = getFormCodeByCode(code);
+    if (formCode?.optionalFieldIds) {
+      formCode.optionalFieldIds.forEach((id) => fieldIdSet.add(id));
+    }
+  });
+
+  return Array.from(fieldIdSet);
 };

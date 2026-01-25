@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Button, Form, Card, ListGroup, Modal, Alert } from "react-bootstrap";
 import axios from "axios";
-import { FormField, SelectOption, FieldType } from "../types/type";
+import { FormField, SelectOption, FieldType, ApprovalFlow } from "../types/type";
 import { FORM_CODES, mergeRequiredFields } from "../config/formCodes";
+import { STANDARD_FIELDS, FIELD_CATEGORIES, getStandardFieldById } from "../config/standardFields";
+import { ApprovalFlowModal } from "../component/ApprovalFlowModal";
 
 const FormBuilder: React.FC = () => {
   const [formTitle, setFormTitle] = useState("");
@@ -16,6 +18,8 @@ const FormBuilder: React.FC = () => {
   );
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [saveMessage, setSaveMessage] = useState<string>("");
+  const [approvalFlow, setApprovalFlow] = useState<ApprovalFlow | null>(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
 
   // 새 필드 초기값
   const [newField, setNewField] = useState<FormField>({
@@ -44,18 +48,43 @@ const FormBuilder: React.FC = () => {
     { value: "apiselect", label: "API 선택 (동적)" },
   ];
 
-  // 폼 코드 변경 시 필수 필드 자동 추가
+  // 폼 코드 변경 시 필수 필드 자동 추가/제거
   useEffect(() => {
-    if (formCodes.length === 0) return;
+    if (formCodes.length === 0) {
+      // 폼 코드가 하나도 선택되지 않은 경우, 모든 필드에서 필수 필드만 제거
+      // 이전에 선택했던 폼 코드의 필수 필드 ID를 추적해야 함
+      setFields(prevFields => {
+        // 모든 폼 코드의 필수 필드 ID 수집
+        const allRequiredFieldIds = new Set<string>();
+        FORM_CODES.forEach(formCode => {
+          formCode.requiredFields.forEach(field => {
+            allRequiredFieldIds.add(field.id);
+          });
+        });
+
+        // 필수 필드가 아닌 커스텀 필드만 유지
+        return prevFields.filter(f => !allRequiredFieldIds.has(f.id));
+      });
+      return;
+    }
 
     const requiredFields = mergeRequiredFields(formCodes);
 
-    // 기존 필드에서 필수 필드가 아닌 것들만 유지
-    const requiredFieldIds = new Set(requiredFields.map(f => f.id));
-    const customFields = fields.filter(f => !requiredFieldIds.has(f.id));
+    setFields(prevFields => {
+      // 모든 폼 코드의 필수 필드 ID 수집 (선택되지 않은 것도 포함)
+      const allRequiredFieldIds = new Set<string>();
+      FORM_CODES.forEach(formCode => {
+        formCode.requiredFields.forEach(field => {
+          allRequiredFieldIds.add(field.id);
+        });
+      });
 
-    // 필수 필드 + 커스텀 필드 병합
-    setFields([...requiredFields, ...customFields]);
+      // 기존 필드에서 필수 필드가 아닌 것들만 유지 (커스텀 필드만)
+      const customFields = prevFields.filter(f => !allRequiredFieldIds.has(f.id));
+
+      // 현재 선택된 폼 코드의 필수 필드 + 커스텀 필드 병합
+      return [...requiredFields, ...customFields];
+    });
   }, [formCodes]);
 
   // 폼 코드 토글
@@ -67,6 +96,37 @@ const FormBuilder: React.FC = () => {
         return [...prev, code];
       }
     });
+  };
+
+  // 필드가 필수 필드인지 확인 (폼 코드에서 온 필드)
+  const isRequiredField = (fieldId: string): boolean => {
+    const allRequiredFieldIds = new Set<string>();
+    FORM_CODES.forEach(formCode => {
+      formCode.requiredFields.forEach(field => {
+        allRequiredFieldIds.add(field.id);
+      });
+    });
+    return allRequiredFieldIds.has(fieldId);
+  };
+
+  // 선택된 폼 코드에 따라 추가 가능한 필드 ID 목록 가져오기
+  const getAvailableFieldIds = (): string[] => {
+    if (formCodes.length === 0) {
+      return []; // 폼 코드가 선택되지 않았으면 추가 불가
+    }
+
+    // 모든 선택된 폼 코드의 optionalFieldIds 합치기
+    const availableIds = new Set<string>();
+    formCodes.forEach(code => {
+      const formCode = FORM_CODES.find(fc => fc.code === code);
+      if (formCode?.optionalFieldIds) {
+        formCode.optionalFieldIds.forEach(id => availableIds.add(id));
+      }
+    });
+
+    // 이미 추가된 필드 ID 제외
+    const existingFieldIds = new Set(fields.map(f => f.id));
+    return Array.from(availableIds).filter(id => !existingFieldIds.has(id));
   };
 
   // 필드 추가/수정 모달 열기
@@ -88,10 +148,40 @@ const FormBuilder: React.FC = () => {
     setShowFieldModal(true);
   };
 
+  // 필드 ID 변경 핸들러
+  const handleFieldIdChange = (selectedId: string) => {
+    const standardField = getStandardFieldById(selectedId);
+
+    if (standardField) {
+      // 표준 필드를 선택한 경우, 라벨과 권장 타입 자동 설정
+      setNewField({
+        ...newField,
+        id: selectedId,
+        label: standardField.label,
+        type: standardField.suggestedTypes[0] || "text",
+      });
+    } else {
+      setNewField({
+        ...newField,
+        id: selectedId,
+      });
+    }
+  };
+
   // 필드 저장
   const handleSaveField = () => {
     if (!newField.id || !newField.label) {
       alert("필드 ID와 라벨은 필수입니다.");
+      return;
+    }
+
+    // 중복 ID 체크 (수정 시 자기 자신 제외)
+    const isDuplicate = fields.some((field, idx) =>
+      field.id === newField.id && idx !== editingFieldIndex
+    );
+
+    if (isDuplicate) {
+      alert("이미 사용 중인 필드 ID입니다. 다른 ID를 선택해주세요.");
       return;
     }
 
@@ -109,6 +199,14 @@ const FormBuilder: React.FC = () => {
 
   // 필드 삭제
   const handleDeleteField = (index: number) => {
+    const field = fields[index];
+
+    // 필수 필드는 삭제 불가
+    if (isRequiredField(field.id)) {
+      alert("이 필드는 선택된 폼 코드의 필수 필드이므로 삭제할 수 없습니다. 폼 코드 선택을 해제하세요.");
+      return;
+    }
+
     setFields(fields.filter((_, i) => i !== index));
   };
 
@@ -191,6 +289,7 @@ const FormBuilder: React.FC = () => {
       api: formApi,
       formCodes: formCodes, // 선택된 폼 코드들
       content: fields,
+      approvalFlow: approvalFlow, // 승인 플로우 추가
     };
 
     try {
@@ -256,6 +355,43 @@ const FormBuilder: React.FC = () => {
 
       <Card className="mb-4">
         <Card.Body>
+          <div className="d-flex justify-content-between align-items-center mb-3">
+            <h5>승인 플로우 설정</h5>
+            <Button
+              variant="outline-primary"
+              size="sm"
+              onClick={() => setShowApprovalModal(true)}
+            >
+              {approvalFlow ? "승인자 수정" : "승인자 설정"}
+            </Button>
+          </div>
+
+          {approvalFlow && approvalFlow.approvers.length > 0 ? (
+            <Alert variant="success">
+              <strong>승인자 {approvalFlow.approvers.length}명 설정됨</strong>
+              <div className="mt-2">
+                {approvalFlow.approvers.map((approver, index) => (
+                  <div key={approver.employee.id}>
+                    {index + 1}. {approver.employee.name} ({approver.employee.email})
+                    {approver.isMandatory && <span className="text-danger"> *필수</span>}
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 small text-muted">
+                모든 승인 필요: {approvalFlow.requireAll ? "예" : "아니오"} |
+                병렬 승인: {approvalFlow.allowParallel ? "예" : "아니오"}
+              </div>
+            </Alert>
+          ) : (
+            <Alert variant="info">
+              승인 플로우가 설정되지 않았습니다. "승인자 설정" 버튼을 클릭하여 승인자를 지정할 수 있습니다.
+            </Alert>
+          )}
+        </Card.Body>
+      </Card>
+
+      <Card className="mb-4">
+        <Card.Body>
           <h5 className="mb-3">폼 코드 선택</h5>
           <p className="text-muted small">
             폼 코드를 선택하면 해당 코드에 필요한 필수 필드가 자동으로 추가됩니다.
@@ -303,11 +439,29 @@ const FormBuilder: React.FC = () => {
             <Button
               variant="primary"
               size="sm"
-              onClick={() => handleOpenFieldModal()}
+              onClick={() => {
+                if (formCodes.length === 0) {
+                  alert("필드를 추가하려면 먼저 폼 코드를 선택하세요.");
+                  return;
+                }
+                handleOpenFieldModal();
+              }}
             >
               + 필드 추가
             </Button>
           </div>
+
+          <Alert variant="info" className="mb-3">
+            <small>
+              <strong>필드 추가 안내:</strong>
+              <ul className="mb-0 mt-1">
+                <li>폼 코드를 먼저 선택하면 해당 코드의 필수 필드가 자동으로 추가됩니다.</li>
+                <li>필수 필드 외에 추가할 수 있는 선택적 필드는 폼 코드마다 정해져 있습니다.</li>
+                <li>폼 코드에서 자동으로 추가된 필수 필드는 수정 및 삭제가 불가능합니다.</li>
+                <li>필드를 드래그하여 순서를 변경할 수 있습니다.</li>
+              </ul>
+            </small>
+          </Alert>
 
           {fields.length === 0 ? (
             <p className="text-muted">
@@ -335,6 +489,11 @@ const FormBuilder: React.FC = () => {
                       {field.required && (
                         <span className="badge bg-danger ms-1">필수</span>
                       )}
+                      {isRequiredField(field.id) && (
+                        <span className="badge bg-warning text-dark ms-1">
+                          <i className="bi bi-lock-fill"></i> 폼 코드 필수 필드
+                        </span>
+                      )}
                       <div className="text-muted small">ID: {field.id}</div>
                     </div>
                     <div>
@@ -344,12 +503,14 @@ const FormBuilder: React.FC = () => {
                         className="me-2"
                         onClick={() => handleOpenFieldModal(index)}
                       >
-                        수정
+                        {isRequiredField(field.id) ? "보기" : "수정"}
                       </Button>
                       <Button
                         variant="outline-danger"
                         size="sm"
                         onClick={() => handleDeleteField(index)}
+                        disabled={isRequiredField(field.id)}
+                        title={isRequiredField(field.id) ? "폼 코드의 필수 필드는 삭제할 수 없습니다" : ""}
                       >
                         삭제
                       </Button>
@@ -380,14 +541,76 @@ const FormBuilder: React.FC = () => {
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
+          {editingFieldIndex !== null && isRequiredField(newField.id) && (
+            <Alert variant="warning" className="mb-3">
+              <i className="bi bi-info-circle-fill"></i> 이 필드는 선택된 폼 코드의 필수 필드입니다.
+              필드 ID, 타입, 라벨, 필수 여부는 변경할 수 없으며, 옵션과 도움말만 수정 가능합니다.
+            </Alert>
+          )}
           <Form.Group className="mb-3">
-            <Form.Label>필드 ID (영문)</Form.Label>
-            <Form.Control
-              type="text"
-              value={newField.id}
-              onChange={(e) => setNewField({ ...newField, id: e.target.value })}
-              placeholder="예: userName"
-            />
+            <Form.Label>필드 ID</Form.Label>
+            {editingFieldIndex !== null && isRequiredField(newField.id) ? (
+              <>
+                <Form.Control
+                  type="text"
+                  value={newField.id}
+                  disabled
+                  className="bg-light"
+                />
+                <Form.Text className="text-muted">
+                  <i className="bi bi-lock-fill"></i> 이 필드는 폼 코드의 필수 필드로, ID를 변경할 수 없습니다.
+                </Form.Text>
+              </>
+            ) : editingFieldIndex === null ? (
+              <>
+                <Form.Select
+                  value={newField.id}
+                  onChange={(e) => handleFieldIdChange(e.target.value)}
+                >
+                  <option value="">필드 ID를 선택하세요</option>
+                  {FIELD_CATEGORIES.map((category) => {
+                    const availableFieldIds = getAvailableFieldIds();
+                    const categoryFields = STANDARD_FIELDS.filter(
+                      (f) => f.category === category.value && availableFieldIds.includes(f.id)
+                    );
+
+                    if (categoryFields.length === 0) return null;
+
+                    return (
+                      <optgroup key={category.value} label={category.label}>
+                        {categoryFields.map((field) => (
+                          <option key={field.id} value={field.id}>
+                            {field.id} - {field.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    );
+                  })}
+                </Form.Select>
+                <Form.Text className="text-muted">
+                  선택된 폼 코드에서 추가 가능한 필드만 표시됩니다.
+                  {newField.id && getStandardFieldById(newField.id) && (
+                    <div className="mt-1 text-info">
+                      <small>
+                        💡 {getStandardFieldById(newField.id)?.description}
+                      </small>
+                    </div>
+                  )}
+                </Form.Text>
+              </>
+            ) : (
+              <>
+                <Form.Control
+                  type="text"
+                  value={newField.id}
+                  disabled
+                  className="bg-light"
+                />
+                <Form.Text className="text-muted">
+                  필드 수정 시에는 ID를 변경할 수 없습니다.
+                </Form.Text>
+              </>
+            )}
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -397,6 +620,7 @@ const FormBuilder: React.FC = () => {
               onChange={(e) =>
                 setNewField({ ...newField, type: e.target.value as FieldType })
               }
+              disabled={editingFieldIndex !== null && isRequiredField(newField.id)}
             >
               {fieldTypes.map((ft) => (
                 <option key={ft.value} value={ft.value}>
@@ -404,6 +628,16 @@ const FormBuilder: React.FC = () => {
                 </option>
               ))}
             </Form.Select>
+            {newField.id && getStandardFieldById(newField.id) && (
+              <Form.Text className="text-muted">
+                권장 타입: {getStandardFieldById(newField.id)?.suggestedTypes.join(", ")}
+              </Form.Text>
+            )}
+            {editingFieldIndex !== null && isRequiredField(newField.id) && (
+              <Form.Text className="text-muted d-block">
+                <i className="bi bi-lock-fill"></i> 필수 필드는 타입을 변경할 수 없습니다.
+              </Form.Text>
+            )}
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -415,7 +649,13 @@ const FormBuilder: React.FC = () => {
                 setNewField({ ...newField, label: e.target.value })
               }
               placeholder="예: 사용자 이름"
+              disabled={editingFieldIndex !== null && isRequiredField(newField.id)}
             />
+            {editingFieldIndex !== null && isRequiredField(newField.id) && (
+              <Form.Text className="text-muted">
+                <i className="bi bi-lock-fill"></i> 필수 필드는 라벨을 변경할 수 없습니다.
+              </Form.Text>
+            )}
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -426,7 +666,13 @@ const FormBuilder: React.FC = () => {
               onChange={(e) =>
                 setNewField({ ...newField, required: e.target.checked })
               }
+              disabled={editingFieldIndex !== null && isRequiredField(newField.id)}
             />
+            {editingFieldIndex !== null && isRequiredField(newField.id) && (
+              <Form.Text className="text-muted">
+                <i className="bi bi-lock-fill"></i> 필수 필드의 필수 입력 여부를 변경할 수 없습니다.
+              </Form.Text>
+            )}
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -640,6 +886,18 @@ const FormBuilder: React.FC = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
+      {/* 승인 플로우 모달 */}
+      <ApprovalFlowModal
+        show={showApprovalModal}
+        onHide={() => setShowApprovalModal(false)}
+        onSave={(flow) => {
+          setApprovalFlow(flow);
+          setShowApprovalModal(false);
+        }}
+        initialFlow={approvalFlow || undefined}
+        apiUrl="/api/employees/list"
+      />
     </div>
   );
 };

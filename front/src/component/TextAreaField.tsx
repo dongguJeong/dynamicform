@@ -1,5 +1,5 @@
 import React from "react";
-import { FormField, ValidationError } from "../types/type";
+import { FormField } from "../types/type";
 
 interface TextAreaFieldProps {
   field: FormField;

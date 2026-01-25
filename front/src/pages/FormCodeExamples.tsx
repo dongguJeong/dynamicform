@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Card, Button, ButtonGroup } from "react-bootstrap";
 import DynamicForm from "../component/DynamicForm";
-import { FormConfig, FormData as FormDataType, FormConfigWithCodes } from "../types/type";
+import { FormConfig, FormConfigWithCodes } from "../types/type";
 import { FORM_CODES, mergeRequiredFields } from "../config/formCodes";
+
+type FormDataType = Record<string, any>;
 
 const FormCodeExamples: React.FC = () => {
   const [selectedExample, setSelectedExample] = useState<string>("extension");
@@ -81,6 +83,15 @@ const FormCodeExamples: React.FC = () => {
     ],
   };
 
+  // 예제 6: 서버 그룹 변경 요청
+  const serverGroupChangeConfig: FormConfigWithCodes = {
+    title: "서버 그룹 변경 요청",
+    description: "사용자의 서버 그룹 접근 권한을 변경하는 신청서입니다.",
+    api: "/api/server-group-change",
+    formCodes: ["server-group-change"],
+    content: mergeRequiredFields(["server-group-change"]),
+  };
+
   const getFormConfig = (): FormConfig => {
     switch (selectedExample) {
       case "extension":
@@ -93,12 +104,14 @@ const FormCodeExamples: React.FC = () => {
         return serverFormConfig;
       case "resource":
         return resourceFormConfig;
+      case "serverGroupChange":
+        return serverGroupChangeConfig;
       default:
         return extensionFormConfig;
     }
   };
 
-  const handleFormSuccess = (data: FormData, response?: any) => {
+  const handleFormSuccess = (data: FormDataType, response?: any) => {
     console.log("Form submitted successfully:", data);
     console.log("Server response:", response);
     alert("폼이 성공적으로 제출되었습니다!");
@@ -170,6 +183,12 @@ const FormCodeExamples: React.FC = () => {
               onClick={() => setSelectedExample("resource")}
             >
               리소스 할당
+            </Button>
+            <Button
+              variant={selectedExample === "serverGroupChange" ? "primary" : "outline-primary"}
+              onClick={() => setSelectedExample("serverGroupChange")}
+            >
+              서버 그룹 변경
             </Button>
           </ButtonGroup>
 

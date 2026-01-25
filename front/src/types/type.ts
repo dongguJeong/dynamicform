@@ -11,7 +11,8 @@ export type FieldType =
   | "date"
   | "daterange"
   | "modalselect"
-  | "apiselect"; // API에서 옵션을 가져오는 select
+  | "apiselect" // API에서 옵션을 가져오는 select
+  | "servergroupchange"; // 서버 그룹 변경 요청
 
 export interface SelectOption {
   label: string;
@@ -19,8 +20,20 @@ export interface SelectOption {
 }
 
 export interface DateRangeValue {
-  startDate: string;
-  endDate: string;
+  startDate: string | undefined;
+  endDate: string | undefined;
+}
+
+export interface ServerGroupChange {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  currentGroups: string[];
+  targetGroups: string[];
+}
+
+export interface ServerGroupChangeValue {
+  changes: ServerGroupChange[];
 }
 
 export interface FieldOptions extends React.CSSProperties {
@@ -111,9 +124,39 @@ export interface FormCode {
   name: string; // 폼 이름 (예: "계정 기간 연장 신청")
   description?: string; // 설명
   requiredFields: FormField[]; // 필수 필드 목록
+  optionalFieldIds?: string[]; // 추가 가능한 선택적 필드 ID 목록 (standardFields에서 선택)
 }
 
 // 폼 설정에 폼 코드 추가
 export interface FormConfigWithCodes extends FormConfig {
   formCodes?: string[]; // 선택된 폼 코드들
+}
+
+// 직원 정보
+export interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  department?: string;
+  position?: string;
+  avatar?: string;
+}
+
+// 승인자 정보 (순서 포함)
+export interface Approver {
+  employee: Employee;
+  order: number; // 승인 순서 (1부터 시작)
+  isMandatory: boolean; // 필수 승인 여부
+}
+
+// 승인 플로우
+export interface ApprovalFlow {
+  approvers: Approver[];
+  requireAll: boolean; // 모든 승인자의 승인이 필요한지 여부
+  allowParallel: boolean; // 병렬 승인 허용 여부 (순서 무관)
+}
+
+// 폼 설정에 승인 플로우 추가
+export interface FormConfigWithApproval extends FormConfig {
+  approvalFlow?: ApprovalFlow;
 }
