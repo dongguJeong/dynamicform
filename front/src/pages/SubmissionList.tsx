@@ -11,6 +11,17 @@ interface Submission {
   submittedBy: string;
   submittedByName: string;
   submittedAt: string;
+  approvalFlow?: {
+    requireAll: boolean;
+    allowParallel: boolean;
+    currentStep?: number;
+    approvers: Array<{
+      employee: { id: string; name: string; email: string };
+      order: number;
+      isMandatory: boolean;
+      status?: string;
+    }>;
+  };
 }
 
 interface PaginationInfo {
@@ -99,6 +110,39 @@ export const SubmissionList: React.FC = () => {
     });
   };
 
+  const getApprovalProgress = (submission: Submission) => {
+    if (!submission.approvalFlow || !submission.approvalFlow.approvers) {
+      return <span className="text-muted">-</span>;
+    }
+
+    const approvers = submission.approvalFlow.approvers;
+    const approvedCount = approvers.filter(a => a.status === "approved").length;
+    const rejectedCount = approvers.filter(a => a.status === "rejected").length;
+    const totalCount = approvers.length;
+
+    if (rejectedCount > 0) {
+      return (
+        <span className="text-danger">
+          거부됨 ({approvedCount}/{totalCount})
+        </span>
+      );
+    }
+
+    if (approvedCount === totalCount) {
+      return (
+        <span className="text-success">
+          완료 ({approvedCount}/{totalCount})
+        </span>
+      );
+    }
+
+    return (
+      <span className="text-info">
+        진행중 ({approvedCount}/{totalCount})
+      </span>
+    );
+  };
+
   if (loading && submissions.length === 0) {
     return (
       <Container className="mt-5 text-center">
@@ -153,11 +197,12 @@ export const SubmissionList: React.FC = () => {
               <Table hover responsive>
                 <thead>
                   <tr>
-                    <th style={{ width: "15%" }}>제출 ID</th>
-                    <th style={{ width: "25%" }}>폼 이름</th>
+                    <th style={{ width: "12%" }}>제출 ID</th>
+                    <th style={{ width: "20%" }}>폼 이름</th>
                     <th style={{ width: "10%" }}>상태</th>
-                    <th style={{ width: "15%" }}>제출자</th>
-                    <th style={{ width: "20%" }}>제출 일시</th>
+                    <th style={{ width: "13%" }}>승인 진행</th>
+                    <th style={{ width: "12%" }}>제출자</th>
+                    <th style={{ width: "18%" }}>제출 일시</th>
                     <th style={{ width: "15%" }}>작업</th>
                   </tr>
                 </thead>
@@ -173,6 +218,7 @@ export const SubmissionList: React.FC = () => {
                       </td>
                       <td>{submission.formName}</td>
                       <td>{getStatusBadge(submission.status)}</td>
+                      <td>{getApprovalProgress(submission)}</td>
                       <td>{submission.submittedByName}</td>
                       <td>{formatDate(submission.submittedAt)}</td>
                       <td>

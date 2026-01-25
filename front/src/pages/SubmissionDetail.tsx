@@ -363,13 +363,18 @@ export const SubmissionDetail: React.FC = () => {
               <Card className="mb-4">
                 <Card.Body>
                   <Row className="mb-3">
-                    <Col md={6}>
+                    <Col md={4}>
                       <strong>모든 승인 필요:</strong>{" "}
                       {submission.approvalFlow.requireAll ? "예" : "아니오"}
                     </Col>
-                    <Col md={6}>
+                    <Col md={4}>
                       <strong>병렬 승인:</strong>{" "}
                       {submission.approvalFlow.allowParallel ? "예" : "아니오"}
+                    </Col>
+                    <Col md={4}>
+                      <strong>현재 단계:</strong>{" "}
+                      {submission.approvalFlow.currentStep || 1} /{" "}
+                      {submission.approvalFlow.approvers.length}
                     </Col>
                   </Row>
 
@@ -378,31 +383,63 @@ export const SubmissionDetail: React.FC = () => {
                       <Table striped bordered>
                         <thead>
                           <tr>
-                            <th style={{ width: "10%" }}>순서</th>
-                            <th style={{ width: "20%" }}>이름</th>
-                            <th style={{ width: "25%" }}>이메일</th>
-                            <th style={{ width: "15%" }}>부서</th>
-                            <th style={{ width: "15%" }}>직급</th>
-                            <th style={{ width: "15%" }}>필수</th>
+                            <th style={{ width: "6%" }}>순서</th>
+                            <th style={{ width: "12%" }}>이름</th>
+                            <th style={{ width: "15%" }}>이메일</th>
+                            <th style={{ width: "10%" }}>부서</th>
+                            <th style={{ width: "8%" }}>직급</th>
+                            <th style={{ width: "8%" }}>필수</th>
+                            <th style={{ width: "8%" }}>상태</th>
+                            <th style={{ width: "13%" }}>처리 일시</th>
+                            <th style={{ width: "20%" }}>코멘트</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {submission.approvalFlow.approvers.map((approver: any) => (
-                            <tr key={approver.employee.id}>
-                              <td>{approver.order}</td>
-                              <td>{approver.employee.name}</td>
-                              <td>{approver.employee.email}</td>
-                              <td>{approver.employee.department || "-"}</td>
-                              <td>{approver.employee.position || "-"}</td>
-                              <td>
-                                {approver.isMandatory ? (
-                                  <Badge bg="danger">필수</Badge>
-                                ) : (
-                                  <Badge bg="secondary">선택</Badge>
-                                )}
-                              </td>
-                            </tr>
-                          ))}
+                          {submission.approvalFlow.approvers.map((approver: any) => {
+                            const approverStatus = approver.status || "pending";
+                            const getApproverStatusBadge = (status: string) => {
+                              switch (status) {
+                                case "approved":
+                                  return <Badge bg="success">승인</Badge>;
+                                case "rejected":
+                                  return <Badge bg="danger">거부</Badge>;
+                                default:
+                                  return <Badge bg="warning">대기</Badge>;
+                              }
+                            };
+
+                            return (
+                              <tr key={approver.employee.id}>
+                                <td>{approver.order}</td>
+                                <td>{approver.employee.name}</td>
+                                <td>{approver.employee.email}</td>
+                                <td>{approver.employee.department || "-"}</td>
+                                <td>{approver.employee.position || "-"}</td>
+                                <td>
+                                  {approver.isMandatory ? (
+                                    <Badge bg="danger">필수</Badge>
+                                  ) : (
+                                    <Badge bg="secondary">선택</Badge>
+                                  )}
+                                </td>
+                                <td>{getApproverStatusBadge(approverStatus)}</td>
+                                <td>
+                                  {approver.actionAt ? (
+                                    <small>{formatDate(approver.actionAt)}</small>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </td>
+                                <td>
+                                  {approver.actionComment ? (
+                                    <small className="text-muted">{approver.actionComment}</small>
+                                  ) : (
+                                    "-"
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </Table>
                     )}

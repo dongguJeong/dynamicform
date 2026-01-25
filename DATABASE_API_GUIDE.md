@@ -14,6 +14,20 @@
 
 이 문서는 Dynamic Form 시스템을 실제 데이터베이스와 연동하기 위한 스키마 설계 및 API 통신 방법을 설명합니다.
 
+### 현재 구현 상태
+
+**메모리 저장소 (개발 버전)**
+- 현재 구현은 Map 객체를 사용한 메모리 저장소 기반
+- 서버 재시작 시 모든 데이터 초기화
+- 승인 관리 API 포함 (`/api/approvals/*`)
+- 개발 및 테스트 목적
+
+**데이터베이스 버전 (이 문서)**
+- 운영 환경을 위한 이론적 설계
+- MySQL/PostgreSQL 스키마 제공
+- 트랜잭션, 외래키, 인덱스 최적화 포함
+- 실제 구현 시 참고용
+
 ### 주요 개념
 
 1. **Form Schema (폼 스키마)**: 폼의 구조와 필드 정의를 저장
@@ -944,16 +958,21 @@ async function processServerGroupChanges(submissionId) {
 }
 ```
 
-### 4. 폼 승인/거절 API
+### 4. 폼 승인/거절 API (메모리 저장소 구현 포함)
+
+> **참고**: 이 섹션은 현재 구현된 메모리 저장소 버전 API를 포함합니다. 데이터베이스 버전 구현 시 구조 참고용으로 활용하세요.
 
 #### 4.1 승인자별 승인 처리
 
+**현재 구현 (메모리 저장소 버전)**
+
 ```http
-POST /api/forms/approvals/:approverId/approve
+POST /api/approvals/:approverId/approve
 Content-Type: application/json
 Authorization: Bearer {token}
 
 {
+  "employeeId": "EMP001",
   "comment": "승인합니다"
 }
 ```
@@ -963,28 +982,34 @@ Authorization: Bearer {token}
 {
   "success": true,
   "data": {
-    "approverId": "approver_22222",
+    "approverId": "SUB-123-EMP001-1",
     "status": "approved",
     "actionAt": "2024-01-15T14:30:00Z",
     "flowStatus": "in_progress",
-    "nextApprover": {
-      "id": "approver_33333",
-      "employeeName": "윤서준",
-      "order": 2
-    }
+    "submissionStatus": "pending"
   },
   "message": "승인이 완료되었습니다"
 }
 ```
 
+**참고**:
+- `approverId` 형식: `{submissionId}-{employeeId}-{order}`
+- `employeeId`는 요청 본문에 포함 필수
+- `comment`는 선택사항
+- 순차 승인 시 현재 차례가 아니면 400 에러 반환
+- 모든 승인 완료 시 `flowStatus`와 `submissionStatus`가 `"approved"`로 변경
+
 #### 4.2 승인자별 거절 처리
 
+**현재 구현 (메모리 저장소 버전)**
+
 ```http
-POST /api/forms/approvals/:approverId/reject
+POST /api/approvals/:approverId/reject
 Content-Type: application/json
 Authorization: Bearer {token}
 
 {
+  "employeeId": "EMP001",
   "comment": "추가 정보가 필요합니다"
 }
 ```
@@ -994,20 +1019,28 @@ Authorization: Bearer {token}
 {
   "success": true,
   "data": {
-    "approverId": "approver_22222",
+    "approverId": "SUB-123-EMP001-1",
     "status": "rejected",
     "actionAt": "2024-01-15T14:30:00Z",
     "flowStatus": "rejected",
     "submissionStatus": "rejected"
   },
-  "message": "거절이 완료되었습니다"
+  "message": "거부가 완료되었습니다"
 }
 ```
 
-#### 4.3 내 승인 대기 목록 조회
+**참고**:
+- `employeeId`는 요청 본문에 포함 필수
+- `comment`는 **필수** (거부 사유)
+- 거부 시 즉시 전체 승인 플로우가 `"rejected"` 상태로 변경
+- `submissionStatus`도 `"rejected"`로 변경되어 더 이상 승인 불가
+
+#### 4.3 내 승인 목록 조회 (대기중 + 완료)
+
+**현재 구현 (메모리 저장소 버전)**
 
 ```http
-GET /api/forms/approvals/my-pending
+GET /api/approvals/my-approvals?employeeId={employeeId}
 Authorization: Bearer {token}
 ```
 
@@ -1017,20 +1050,46 @@ Authorization: Bearer {token}
   "success": true,
   "data": [
     {
-      "approverId": "approver_22222",
-      "submissionId": "submission_67890",
-      "formSchemaName": "계정 기간 연장 신청",
-      "submittedBy": "홍길동",
+      "id": "SUB-123-EMP001-1",
+      "submissionId": "SUB-123",
+      "formName": "계정 기간 연장 신청",
+      "submittedByName": "홍길동",
       "submittedAt": "2024-01-15T11:00:00Z",
       "order": 1,
       "isMandatory": true,
+      "status": "pending",
+      "actionAt": null,
+      "actionComment": null,
+      "flowStatus": "pending",
       "currentStep": 1,
-      "totalSteps": 2
+      "totalSteps": 2,
+      "isMyTurn": true
+    },
+    {
+      "id": "SUB-124-EMP001-2",
+      "submissionId": "SUB-124",
+      "formName": "서버 신청",
+      "submittedByName": "김철수",
+      "submittedAt": "2024-01-14T10:00:00Z",
+      "order": 2,
+      "isMandatory": true,
+      "status": "approved",
+      "actionAt": "2024-01-14T15:30:00Z",
+      "actionComment": "승인합니다",
+      "flowStatus": "approved",
+      "currentStep": 2,
+      "totalSteps": 2,
+      "isMyTurn": false
     }
   ],
-  "count": 5
+  "count": 2
 }
 ```
+
+**참고**:
+- 대기중(`status: "pending"`)과 완료(`status: "approved"` 또는 `"rejected"`) 모두 포함
+- 프론트엔드에서 탭으로 구분하여 표시
+- `isMyTurn`: 순차 승인에서 현재 승인 차례인지 여부
 
 #### 4.4 승인 플로우 상태 조회
 
@@ -2375,10 +2434,12 @@ find $BACKUP_DIR -name "*.sql.gz" -mtime +7 -delete
 1. **14가지 필드 타입 지원**: text, email, password, number, textarea, select, radio, checkbox, date, daterange, apiselect, modalselect, file, servergroupchange
 2. **표준 필드 시스템**: 일관성 있는 필드 ID 사용 (standardFields.ts)
 3. **폼 코드 시스템**: 재사용 가능한 폼 템플릿 (필수 필드 + 옵션 필드)
-4. **승인 플로우**: 순차/병렬 승인, 필수/선택 승인자 지정
-5. **서버 그룹 변경 요청**: 다중 사용자의 다중 그룹 할당 관리
-6. **제출 데이터 관리**: 목록 조회, 상세 조회, 상태 변경, 읽기 전용 폼 렌더링
-7. **자동 타입 추론**: 제출 데이터로부터 필드 타입 자동 감지 및 폼 재구성
+4. **승인 플로우**: 순차/병렬 승인, 필수/선택 승인자 지정, 폼 빌더 통합
+5. **승인 관리**: 승인자 전용 페이지, 대기중/완료 탭, 승인/거부 처리, 권한 검증
+6. **서버 그룹 변경 요청**: 다중 사용자의 다중 그룹 할당 관리
+7. **제출 데이터 관리**: 목록 조회, 상세 조회, 상태 변경, 승인 진행 표시
+8. **읽기 전용 폼 렌더링**: 제출 데이터를 폼 형태로 표시
+9. **자동 타입 추론**: 제출 데이터로부터 필드 타입 자동 감지 및 폼 재구성
 
 ### API 엔드포인트
 
@@ -2397,11 +2458,14 @@ find $BACKUP_DIR -name "*.sql.gz" -mtime +7 -delete
 - PATCH /api/forms/submissions/:id/status
 - DELETE /api/forms/submissions/:id
 
-**승인 관리**
-- GET /api/forms/approvals/my-pending
-- POST /api/forms/approvals/:approverId/approve
-- POST /api/forms/approvals/:approverId/reject
-- GET /api/forms/submissions/:id/approval-flow
+**승인 관리 (현재 구현)**
+- GET /api/approvals/my-approvals?employeeId={id} - 내 승인 목록 (대기중 + 완료)
+- POST /api/approvals/:approverId/approve - 승인 처리
+- POST /api/approvals/:approverId/reject - 거부 처리
+
+**승인 관리 (DB 버전 - 이론적 설계)**
+- GET /api/forms/approvals/my-pending - 대기중인 승인 목록
+- GET /api/forms/submissions/:id/approval-flow - 승인 플로우 상태 조회
 
 **직원 및 서버 그룹**
 - GET /api/employees/list

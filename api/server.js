@@ -629,6 +629,271 @@ app.get('/api/employees/list', (req, res) => {
   });
 });
 
+// ===== 승인 관리 API =====
+
+// 내 승인 목록 조회 (대기중 + 완료)
+app.get('/api/approvals/my-approvals', (req, res) => {
+  const { employeeId } = req.query;
+
+  if (!employeeId) {
+    return res.status(400).json({
+      success: false,
+      message: 'employeeId는 필수입니다.'
+    });
+  }
+
+  const approvals = [];
+
+  // 모든 제출 데이터를 순회하며 승인 플로우 확인
+  formSubmissions.forEach((submission) => {
+    if (submission.approvalFlow && submission.approvalFlow.approvers) {
+      submission.approvalFlow.approvers.forEach((approver) => {
+        if (approver.employee.id === employeeId) {
+          // 승인자 ID 생성 (실제로는 DB에 저장되어야 함)
+          const approverId = `${submission.id}-${approver.employee.id}-${approver.order}`;
+
+          // 현재 단계 확인 (병렬이 아닌 경우)
+          const isMyTurn = submission.approvalFlow.allowParallel ||
+                          (submission.approvalFlow.currentStep === approver.order);
+
+          // 플로우 상태 결정
+          let flowStatus = 'pending';
+          if (submission.status === 'approved') {
+            flowStatus = 'approved';
+          } else if (submission.status === 'rejected') {
+            flowStatus = 'rejected';
+          } else if (approver.status === 'approved' || approver.status === 'rejected') {
+            flowStatus = 'in_progress';
+          }
+
+          approvals.push({
+            id: approverId,
+            submissionId: submission.id,
+            formName: submission.formName,
+            submittedByName: submission.submittedByName,
+            submittedAt: submission.submittedAt,
+            order: approver.order,
+            isMandatory: approver.isMandatory,
+            status: approver.status || 'pending',
+            actionAt: approver.actionAt || null,
+            actionComment: approver.actionComment || null,
+            flowStatus: flowStatus,
+            currentStep: submission.approvalFlow.currentStep || 1,
+            totalSteps: submission.approvalFlow.approvers.length,
+            isMyTurn: isMyTurn
+          });
+        }
+      });
+    }
+  });
+
+  res.json({
+    success: true,
+    data: approvals,
+    count: approvals.length
+  });
+});
+
+// 승인 처리
+app.post('/api/approvals/:approverId/approve', (req, res) => {
+  const { approverId } = req.params;
+  const { employeeId, comment } = req.body;
+
+  // approverId 파싱: submissionId-employeeId-order
+  const parts = approverId.split('-');
+  if (parts.length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: '잘못된 승인자 ID입니다.'
+    });
+  }
+
+  const submissionId = parts.slice(0, -2).join('-');
+  const order = parseInt(parts[parts.length - 1]);
+  const submission = formSubmissions.get(submissionId);
+
+  if (!submission) {
+    return res.status(404).json({
+      success: false,
+      message: '제출 데이터를 찾을 수 없습니다.'
+    });
+  }
+
+  if (!submission.approvalFlow || !submission.approvalFlow.approvers) {
+    return res.status(400).json({
+      success: false,
+      message: '승인 플로우가 설정되지 않았습니다.'
+    });
+  }
+
+  // 해당 승인자 찾기
+  const approver = submission.approvalFlow.approvers.find(
+    a => a.employee.id === employeeId && a.order === order
+  );
+
+  if (!approver) {
+    return res.status(404).json({
+      success: false,
+      message: '승인 권한이 없습니다.'
+    });
+  }
+
+  // 이미 처리된 경우
+  if (approver.status === 'approved' || approver.status === 'rejected') {
+    return res.status(400).json({
+      success: false,
+      message: '이미 처리된 승인 건입니다.'
+    });
+  }
+
+  // 순차 승인인 경우 현재 순서 확인
+  if (!submission.approvalFlow.allowParallel) {
+    const currentStep = submission.approvalFlow.currentStep || 1;
+    if (approver.order !== currentStep) {
+      return res.status(400).json({
+        success: false,
+        message: '현재 승인 순서가 아닙니다.'
+      });
+    }
+  }
+
+  // 승인 처리
+  approver.status = 'approved';
+  approver.actionAt = new Date().toISOString();
+  approver.actionComment = comment || null;
+
+  // 다음 단계 확인
+  let allApproved = true;
+  let nextStep = submission.approvalFlow.currentStep || 1;
+
+  if (submission.approvalFlow.allowParallel) {
+    // 병렬 승인: 모든 필수 승인자가 승인했는지 확인
+    for (const app of submission.approvalFlow.approvers) {
+      if (app.isMandatory && app.status !== 'approved') {
+        allApproved = false;
+        break;
+      }
+    }
+  } else {
+    // 순차 승인: 다음 단계로 이동
+    nextStep = approver.order + 1;
+    submission.approvalFlow.currentStep = nextStep;
+
+    // 다음 승인자가 있는지 확인
+    if (nextStep > submission.approvalFlow.approvers.length) {
+      allApproved = true;
+    } else {
+      allApproved = false;
+    }
+  }
+
+  // 모든 승인이 완료된 경우
+  if (allApproved) {
+    submission.status = 'approved';
+    submission.processedAt = new Date().toISOString();
+  }
+
+  // 업데이트된 제출 데이터 저장
+  formSubmissions.set(submissionId, submission);
+
+  res.json({
+    success: true,
+    data: {
+      approverId,
+      status: 'approved',
+      actionAt: approver.actionAt,
+      flowStatus: allApproved ? 'approved' : 'in_progress',
+      submissionStatus: submission.status
+    },
+    message: '승인이 완료되었습니다.'
+  });
+});
+
+// 거부 처리
+app.post('/api/approvals/:approverId/reject', (req, res) => {
+  const { approverId } = req.params;
+  const { employeeId, comment } = req.body;
+
+  if (!comment || !comment.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: '거부 사유는 필수입니다.'
+    });
+  }
+
+  // approverId 파싱
+  const parts = approverId.split('-');
+  if (parts.length < 3) {
+    return res.status(400).json({
+      success: false,
+      message: '잘못된 승인자 ID입니다.'
+    });
+  }
+
+  const submissionId = parts.slice(0, -2).join('-');
+  const order = parseInt(parts[parts.length - 1]);
+  const submission = formSubmissions.get(submissionId);
+
+  if (!submission) {
+    return res.status(404).json({
+      success: false,
+      message: '제출 데이터를 찾을 수 없습니다.'
+    });
+  }
+
+  if (!submission.approvalFlow || !submission.approvalFlow.approvers) {
+    return res.status(400).json({
+      success: false,
+      message: '승인 플로우가 설정되지 않았습니다.'
+    });
+  }
+
+  // 해당 승인자 찾기
+  const approver = submission.approvalFlow.approvers.find(
+    a => a.employee.id === employeeId && a.order === order
+  );
+
+  if (!approver) {
+    return res.status(404).json({
+      success: false,
+      message: '승인 권한이 없습니다.'
+    });
+  }
+
+  // 이미 처리된 경우
+  if (approver.status === 'approved' || approver.status === 'rejected') {
+    return res.status(400).json({
+      success: false,
+      message: '이미 처리된 승인 건입니다.'
+    });
+  }
+
+  // 거부 처리
+  approver.status = 'rejected';
+  approver.actionAt = new Date().toISOString();
+  approver.actionComment = comment;
+
+  // 제출 상태를 거부로 변경
+  submission.status = 'rejected';
+  submission.processedAt = new Date().toISOString();
+  submission.statusMessage = comment;
+
+  // 업데이트된 제출 데이터 저장
+  formSubmissions.set(submissionId, submission);
+
+  res.json({
+    success: true,
+    data: {
+      approverId,
+      status: 'rejected',
+      actionAt: approver.actionAt,
+      flowStatus: 'rejected',
+      submissionStatus: 'rejected'
+    },
+    message: '거부가 완료되었습니다.'
+  });
+});
+
 // 계정 목록
 app.get('/api/accounts/list', (req, res) => {
   const accounts = [

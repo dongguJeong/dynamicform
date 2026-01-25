@@ -7,6 +7,7 @@ import Examples from "./pages/Examples";
 import FormCodeExamples from "./pages/FormCodeExamples";
 import SubmissionList from "./pages/SubmissionList";
 import SubmissionDetail from "./pages/SubmissionDetail";
+import MyApprovals from "./pages/MyApprovals";
 
 const App: React.FC = () => {
   return (
@@ -36,6 +37,9 @@ const App: React.FC = () => {
                 <Nav.Link as={Link} to="/submissions">
                   제출 현황
                 </Nav.Link>
+                <Nav.Link as={Link} to="/my-approvals">
+                  내 승인
+                </Nav.Link>
               </Nav>
             </Navbar.Collapse>
           </Container>
@@ -49,6 +53,7 @@ const App: React.FC = () => {
           <Route path="/form-test" element={<FormTest />} />
           <Route path="/submissions" element={<SubmissionList />} />
           <Route path="/submissions/:id" element={<SubmissionDetail />} />
+          <Route path="/my-approvals" element={<MyApprovals />} />
         </Routes>
       </div>
     </Router>

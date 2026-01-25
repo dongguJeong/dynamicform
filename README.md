@@ -28,7 +28,8 @@ React + TypeScript + Bootstrap 기반의 동적 폼 애플리케이션과 Node.j
   - 폼 보기 모드: DynamicForm으로 데이터 렌더링
   - 데이터 보기 모드: 테이블 형태로 원시 데이터 표시
 - **상태 관리**: pending, processing, approved, rejected, completed
-- **승인 플로우 추적**: 승인자 및 승인 상태 확인
+- **승인 진행 표시**: 승인자별 처리 상태 및 진행도 표시
+- **승인 플로우 상세**: 승인자 목록, 상태, 처리 일시, 코멘트 확인
 
 ### 4. 승인 플로우 (Approval Flow)
 - **승인자 지정**: 직원 검색 및 선택
@@ -37,7 +38,16 @@ React + TypeScript + Bootstrap 기반의 동적 폼 애플리케이션과 Node.j
 - **필수/선택**: 각 승인자별 필수 여부 설정
 - **폼 빌더 통합**: 폼 생성 시 승인 플로우 미리 설정
 
-### 5. 서버 그룹 변경 요청
+### 5. 승인 관리 (My Approvals)
+- **내 승인 목록**: 대기중 / 처리완료 탭으로 구분
+- **승인/거부 처리**:
+  - 승인: 코멘트 선택사항
+  - 거부: 사유 필수 입력
+- **실시간 진행 상태**: 순차/병렬 승인 진행 상황 확인
+- **제출 상세 연동**: 승인 항목에서 바로 제출 상세로 이동
+- **권한 검증**: 본인 차례에만 승인/거부 가능 (순차 승인 시)
+
+### 6. 서버 그룹 변경 요청
 - **다대다 매핑**: 여러 사용자를 각기 다른 서버 그룹에 배정
 - **현재 그룹 표시**: 사용자 선택 시 현재 서버 그룹 자동 표시
 - **다중 선택**: 한 사용자를 여러 서버 그룹에 배정 가능
@@ -102,6 +112,7 @@ npm run dev
 - 폼 빌더: http://localhost:5173/form-builder
 - 폼 테스트: http://localhost:5173/form-test
 - **제출 현황: http://localhost:5173/submissions**
+- **내 승인: http://localhost:5173/my-approvals**
 
 API 서버: http://localhost:3001/health
 
@@ -120,8 +131,9 @@ dynamicform/
 │   │   ├── pages/             # 페이지
 │   │   │   ├── FormBuilder.tsx
 │   │   │   ├── FormTest.tsx
-│   │   │   ├── SubmissionList.tsx          # NEW
-│   │   │   └── SubmissionDetail.tsx        # NEW
+│   │   │   ├── SubmissionList.tsx          # 제출 목록
+│   │   │   ├── SubmissionDetail.tsx        # 제출 상세
+│   │   │   └── MyApprovals.tsx             # 내 승인 관리
 │   │   ├── config/            # 설정
 │   │   │   ├── formCodes.ts
 │   │   │   └── standardFields.ts
@@ -371,6 +383,43 @@ export default defineConfig({
 }
 ```
 
+## 승인 관리 (My Approvals)
+
+### 승인자 페이지
+
+1. **"내 승인" 메뉴** 클릭 (`/my-approvals`)
+2. **탭 선택**:
+   - **대기중**: 처리해야 할 승인 건 목록
+   - **처리완료**: 이미 승인/거부한 건 목록
+3. **승인 건 정보 확인**:
+   - 폼 이름, 제출자, 제출 일시
+   - 승인 순서 (예: 1/3)
+   - 필수/선택 여부
+   - 승인 상태, 전체 진행 상태
+4. **승인/거부 처리**:
+   - **승인 버튼**: 코멘트 입력 (선택사항) → 승인
+   - **거부 버튼**: 거부 사유 입력 (필수) → 거부
+   - **상세 버튼**: 제출 상세 페이지로 이동
+
+### 승인 규칙
+
+- **순차 승인**: 현재 차례인 승인자만 처리 가능
+- **병렬 승인**: 모든 승인자가 동시에 처리 가능
+- **필수 승인**: 반드시 승인해야 다음 단계 진행
+- **선택 승인**: 건너뛸 수 있음 (requireAll=false인 경우)
+
+### 승인 진행 추적
+
+**제출 목록 페이지**:
+- "승인 진행" 컬럼에서 전체 진행 상황 확인
+- 예: "진행중 (1/3)" = 3명 중 1명 승인 완료
+
+**제출 상세 페이지**:
+- 승인 플로우 섹션에서 각 승인자별 상태 확인:
+  - 대기/승인/거부 상태 배지
+  - 처리 일시
+  - 승인/거부 코멘트
+
 ## API 엔드포인트
 
 ### 폼 관리
@@ -380,11 +429,18 @@ export default defineConfig({
 - `DELETE /api/forms/:formId` - 폼 삭제
 
 ### 폼 제출 관리
-- `POST /api/forms/submissions` - 폼 제출
+- `POST /api/forms/submissions` - 폼 제출 (승인 플로우 포함)
 - `GET /api/forms/submissions` - 제출 목록 (필터링, 페이지네이션)
 - `GET /api/forms/submissions/:id` - 제출 상세
 - `PATCH /api/forms/submissions/:id/status` - 상태 변경
 - `DELETE /api/forms/submissions/:id` - 제출 삭제
+
+### 승인 관리
+- `GET /api/approvals/my-approvals?employeeId={id}` - 내 승인 목록 (대기중 + 완료)
+- `POST /api/approvals/:approverId/approve` - 승인 처리
+  - Body: `{ employeeId, comment? }`
+- `POST /api/approvals/:approverId/reject` - 거부 처리
+  - Body: `{ employeeId, comment }` (comment 필수)
 
 ### 데이터 조회
 - `GET /api/employees/list` - 직원 목록
@@ -414,11 +470,30 @@ npm run build
 3. **TypeScript 타입 체크**: VSCode에서 자동으로 타입 체크가 수행됩니다.
 4. **Bootstrap 컴포넌트**: [Bootstrap 공식 문서](https://getbootstrap.com/docs/5.3/components/)를 참고하세요.
 
+### 승인 관리 테스트
+
+1. **승인자 설정**: 폼 빌더에서 승인 플로우 설정
+2. **폼 제출**: enableApprovalFlow=true로 폼 제출
+3. **승인 확인**: 제출 현황에서 승인 진행 상태 확인
+4. **승인 처리**: 내 승인 페이지 (`/my-approvals`)에서 승인/거부
+   - 현재 구현은 employeeId를 하드코딩 (`EMP001`)
+   - 실제 환경에서는 인증 토큰에서 사용자 ID 추출 필요
+5. **결과 확인**: 제출 상세 페이지에서 승인 결과 및 코멘트 확인
+
 ## 데이터 저장
 
 **현재 구현**: 메모리 저장소 (Map 객체)
-- 서버 재시작 시 데이터 초기화
-- 개발 및 테스트용
+- 폼 설정: `savedForms` Map
+- 제출 데이터: `formSubmissions` Map (승인 플로우 포함)
+- 서버 재시작 시 **모든 데이터 초기화**
+- 개발 및 테스트 전용
+
+**저장되는 데이터**:
+- 폼 스키마 (FormConfig)
+- 폼 제출 데이터
+- 승인 플로우 설정
+- 승인자 정보 및 승인/거부 상태
+- 승인 코멘트 및 처리 일시
 
 **운영 환경**: 데이터베이스 연동 필요
 - MongoDB, PostgreSQL, MySQL 등
