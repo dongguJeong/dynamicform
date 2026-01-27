@@ -57,6 +57,18 @@ export const FORM_CODES: FormCode[] = [
       "notes",
       "urgency",
     ],
+    apiConfigs: [
+      {
+        url: "/api/account/extension",
+        fields: ["accountSelect", "extensionPeriod", "extensionReason"],
+        fieldMapping: {
+          accountSelect: "accountId",
+          extensionPeriod: "period",
+          extensionReason: "reason",
+        },
+        method: "POST",
+      },
+    ],
   },
   {
     code: "account-update",
@@ -116,6 +128,18 @@ export const FORM_CODES: FormCode[] = [
       "requesterPhone",
       "notes",
       "urgency",
+    ],
+    apiConfigs: [
+      {
+        url: "/api/account/update",
+        fields: ["accountSelect", "updateFields", "updateReason"],
+        fieldMapping: {
+          accountSelect: "accountId",
+          updateFields: "fieldsToUpdate",
+          updateReason: "reason",
+        },
+        method: "POST",
+      },
     ],
   },
   {
@@ -194,6 +218,19 @@ export const FORM_CODES: FormCode[] = [
       "notes",
       "urgency",
     ],
+    apiConfigs: [
+      {
+        url: "/api/server/request",
+        fields: ["serverType", "serverEnvironment", "serverSpecs", "serverPurpose"],
+        fieldMapping: {
+          serverType: "type",
+          serverEnvironment: "environment",
+          serverSpecs: "specifications",
+          serverPurpose: "purpose",
+        },
+        method: "POST",
+      },
+    ],
   },
   {
     code: "resource-allocation",
@@ -237,6 +274,17 @@ export const FORM_CODES: FormCode[] = [
       "urgency",
       "environment",
     ],
+    apiConfigs: [
+      {
+        url: "/api/resource/allocation",
+        fields: ["resourceType", "allocationPeriod"],
+        fieldMapping: {
+          resourceType: "type",
+          allocationPeriod: "period",
+        },
+        method: "POST",
+      },
+    ],
   },
   {
     code: "server-group-change",
@@ -273,6 +321,17 @@ export const FORM_CODES: FormCode[] = [
       "requesterPhone",
       "notes",
       "urgency",
+    ],
+    apiConfigs: [
+      {
+        url: "/api/server-group/change",
+        fields: ["serverGroupChanges", "changeReason"],
+        fieldMapping: {
+          serverGroupChanges: "changes",
+          changeReason: "reason",
+        },
+        method: "POST",
+      },
     ],
   },
 ];
@@ -313,4 +372,18 @@ export const mergeOptionalFieldIds = (formCodes: string[]): string[] => {
   });
 
   return Array.from(fieldIdSet);
+};
+
+// 여러 폼 코드의 API 설정을 병합
+export const mergeApiConfigs = (formCodes: string[]) => {
+  const apiConfigs: any[] = [];
+
+  formCodes.forEach((code) => {
+    const formCode = getFormCodeByCode(code);
+    if (formCode?.apiConfigs) {
+      apiConfigs.push(...formCode.apiConfigs);
+    }
+  });
+
+  return apiConfigs;
 };

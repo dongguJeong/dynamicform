@@ -125,6 +125,7 @@ export interface FormCode {
   description?: string; // 설명
   requiredFields: FormField[]; // 필수 필드 목록
   optionalFieldIds?: string[]; // 추가 가능한 선택적 필드 ID 목록 (standardFields에서 선택)
+  apiConfigs?: ApiConfig[]; // 이 폼 코드에서 사용하는 API 설정
 }
 
 // 폼 설정에 폼 코드 추가

@@ -6,11 +6,26 @@ import { FormConfig } from "../types/type";
  * 승인 플로우 기능이 포함된 폼 예시 페이지
  */
 export const FormWithApprovalExample: React.FC = () => {
-  // 폼 설정 예시
+  // 폼 설정 예시 - apis 형태로 변경 (다중 API 지원)
   const formConfig: FormConfig = {
     title: "계정 기간 연장 신청",
     description: "계정 사용 기간을 연장하려면 아래 양식을 작성하고 승인자를 지정해주세요.",
-    api: "http://localhost:3001/api/selectServer",
+    // 단일 API 방식 (기존)
+    // api: "http://localhost:3001/api/selectServer",
+
+    // 다중 API 방식 (새로운 방식)
+    apis: [
+      {
+        url: "http://localhost:3001/api/account/extend",
+        fields: ["requestTitle", "accountId", "usagePeriod"],
+        method: "POST",
+      },
+      {
+        url: "http://localhost:3001/api/environment/config",
+        fields: ["env", "reason"],
+        method: "POST",
+      },
+    ],
     content: [
       {
         id: "requestTitle",

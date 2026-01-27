@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Card, Button, ButtonGroup } from "react-bootstrap";
 import DynamicForm from "../component/DynamicForm";
 import { FormConfig, FormConfigWithCodes } from "../types/type";
-import { FORM_CODES, mergeRequiredFields } from "../config/formCodes";
+import { FORM_CODES, getFormCodeByCode } from "../config/formCodes";
 
 type FormDataType = Record<string, any>;
 
@@ -13,29 +13,74 @@ const FormCodeExamples: React.FC = () => {
   const extensionFormConfig: FormConfigWithCodes = {
     title: "계정 기간 연장 신청",
     description: "계정의 사용 기간을 연장하는 신청서입니다.",
-    api: "/api/account-extension",
+    // 단일 API 방식
+    // api: "/api/account-extension",
+    // 다중 API 방식
+    apis: [
+      {
+        url: "/api/account/info",
+        fields: ["accountSelect", "extensionPeriod"],
+        method: "POST",
+      },
+      {
+        url: "/api/account/extension",
+        fields: ["extensionReason"],
+        method: "POST",
+      },
+    ],
     formCodes: ["account-extension"],
-    content: mergeRequiredFields(["account-extension"]),
+    content: getFormCodeByCode("account-extension")?.requiredFields || [],
   };
 
   // 예제 2: 계정 정보 수정 신청
   const updateFormConfig: FormConfigWithCodes = {
     title: "계정 정보 수정 신청",
     description: "계정 정보를 수정하는 신청서입니다.",
-    api: "/api/account-update",
+    // 단일 API 방식
+    // api: "/api/account-update",
+    // 다중 API 방식
+    apis: [
+      {
+        url: "/api/account/update",
+        fields: ["accountSelect", "updateFields", "updateReason"],
+        method: "POST",
+      },
+    ],
     formCodes: ["account-update"],
-    content: mergeRequiredFields(["account-update"]),
+    content: getFormCodeByCode("account-update")?.requiredFields || [],
   };
 
   // 예제 3: 계정 연장 + 수정 통합 신청
   const combinedFormConfig: FormConfigWithCodes = {
     title: "계정 연장 및 정보 수정 통합 신청",
     description:
-      "계정 기간 연장과 정보 수정을 동시에 신청할 수 있습니다. 두 폼 코드의 필수 필드가 모두 포함되어 있으며, 계정 선택 필드는 중복 제거되어 하나만 표시됩니다.",
-    api: "/api/account-combined",
+      "계정 기간 연장과 정보 수정을 동시에 신청할 수 있습니다. 각 폼 코드의 필수 필드가 모두 포함됩니다.",
+    // 단일 API 방식
+    // api: "/api/account-combined",
+    // 다중 API 방식
+    apis: [
+      {
+        url: "/api/account/extension",
+        fields: ["accountSelect", "extensionPeriod", "extensionReason"],
+        method: "POST",
+      },
+      {
+        url: "/api/account/update",
+        fields: ["accountSelect", "updateFields", "updateReason"],
+        method: "POST",
+      },
+      {
+        url: "/api/priority/set",
+        fields: ["urgency"],
+        method: "POST",
+      },
+    ],
     formCodes: ["account-extension", "account-update"],
     content: [
-      ...mergeRequiredFields(["account-extension", "account-update"]),
+      // 계정 연장 필수 필드
+      ...(getFormCodeByCode("account-extension")?.requiredFields || []),
+      // 계정 수정 필수 필드
+      ...(getFormCodeByCode("account-update")?.requiredFields || []),
       // 추가 커스텀 필드
       {
         id: "urgency",
@@ -57,19 +102,42 @@ const FormCodeExamples: React.FC = () => {
   const serverFormConfig: FormConfigWithCodes = {
     title: "서버 리소스 신청",
     description: "새로운 서버 리소스를 신청하는 양식입니다.",
-    api: "/api/server-request",
+    // 단일 API 방식
+    // api: "/api/server-request",
+    // 다중 API 방식
+    apis: [
+      {
+        url: "/api/server/request",
+        fields: ["serverType", "serverEnvironment", "serverSpecs", "serverPurpose"],
+        method: "POST",
+      },
+    ],
     formCodes: ["server-request"],
-    content: mergeRequiredFields(["server-request"]),
+    content: getFormCodeByCode("server-request")?.requiredFields || [],
   };
 
   // 예제 5: 리소스 할당 신청
   const resourceFormConfig: FormConfigWithCodes = {
     title: "클라우드 리소스 할당 신청",
     description: "클라우드 리소스 할당을 신청합니다.",
-    api: "/api/resource-allocation",
+    // 단일 API 방식
+    // api: "/api/resource-allocation",
+    // 다중 API 방식
+    apis: [
+      {
+        url: "/api/resource/allocate",
+        fields: ["resourceType", "allocationPeriod"],
+        method: "POST",
+      },
+      {
+        url: "/api/justification/submit",
+        fields: ["justification"],
+        method: "POST",
+      },
+    ],
     formCodes: ["resource-allocation"],
     content: [
-      ...mergeRequiredFields(["resource-allocation"]),
+      ...(getFormCodeByCode("resource-allocation")?.requiredFields || []),
       {
         id: "justification",
         type: "textarea",
@@ -87,9 +155,18 @@ const FormCodeExamples: React.FC = () => {
   const serverGroupChangeConfig: FormConfigWithCodes = {
     title: "서버 그룹 변경 요청",
     description: "사용자의 서버 그룹 접근 권한을 변경하는 신청서입니다.",
-    api: "/api/server-group-change",
+    // 단일 API 방식
+    // api: "/api/server-group-change",
+    // 다중 API 방식
+    apis: [
+      {
+        url: "/api/server-group/change",
+        fields: ["serverGroupChanges", "changeReason"],
+        method: "POST",
+      },
+    ],
     formCodes: ["server-group-change"],
-    content: mergeRequiredFields(["server-group-change"]),
+    content: getFormCodeByCode("server-group-change")?.requiredFields || [],
   };
 
   const getFormConfig = (): FormConfig => {
