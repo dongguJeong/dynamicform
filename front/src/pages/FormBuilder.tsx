@@ -144,10 +144,36 @@ const FormBuilder: React.FC = () => {
     // 선택된 폼 코드들의 API 설정을 자동으로 병합
     const apiConfigs = mergeApiConfigs(selectedFormCodes);
 
+    // 모든 필드 가져오기
+    let allFields = getAllFields();
+
+    // accountCreate:* 필드들을 필터링하고 accountCreateModalFields 옵션 생성
+    const accountCreateMetaFields = allFields.filter(f => f.id.startsWith("accountCreate:"));
+    const regularFields = allFields.filter(f => !f.id.startsWith("accountCreate:"));
+
+    // accountCreation 필드를 찾아서 accountCreateModalFields 옵션 추가
+    const accountCreationField = regularFields.find(f => f.id === "accountCreation");
+    if (accountCreationField && accountCreateMetaFields.length > 0) {
+      const modalFields: any = {};
+
+      accountCreateMetaFields.forEach(field => {
+        const fieldKey = field.id.split(":")[1]; // "accountCreate:ip" -> "ip"
+        if (fieldKey) {
+          modalFields[fieldKey] = true;
+        }
+      });
+
+      // accountCreation 필드의 options에 accountCreateModalFields 추가
+      if (!accountCreationField.options) {
+        accountCreationField.options = {};
+      }
+      accountCreationField.options.accountCreateModalFields = modalFields;
+    }
+
     const config: any = {
       title: formTitle,
       description: formDescription,
-      content: getAllFields(),
+      content: regularFields, // accountCreate:* 필드들은 제외
       formCodes: selectedFormCodes,
       approvalFlow: approvalFlow,
       apis: apiConfigs, // 폼 코드에서 자동으로 병합된 API 설정

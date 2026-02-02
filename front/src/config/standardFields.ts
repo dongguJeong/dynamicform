@@ -211,6 +211,50 @@ export const STANDARD_FIELDS: StandardField[] = [
     suggestedTypes: ["textarea"],
     category: "server",
   },
+  {
+    id: "serverSelect",
+    label: "서버 선택",
+    description: "서버를 선택하는 필드",
+    suggestedTypes: ["apiselect", "select"],
+    category: "server",
+  },
+
+  // 계정 생성 관련 필드
+  {
+    id: "accountCreation",
+    label: "계정 생성",
+    description: "계정 생성 필드 (테이블 + 모달)",
+    suggestedTypes: ["accountcreate"],
+    category: "account",
+  },
+  {
+    id: "accountCreate:ip",
+    label: "계정 생성 - IP 주소 필드",
+    description: "계정 생성 모달에 IP 주소 입력 필드 추가",
+    suggestedTypes: ["accountcreate"],
+    category: "account",
+  },
+  {
+    id: "accountCreate:textarea",
+    label: "계정 생성 - 설명 필드",
+    description: "계정 생성 모달에 설명 입력 필드 추가",
+    suggestedTypes: ["accountcreate"],
+    category: "account",
+  },
+  {
+    id: "accountCreate:accountSelect",
+    label: "계정 생성 - 연관 계정 선택",
+    description: "계정 생성 모달에 연관 계정 선택 필드 추가",
+    suggestedTypes: ["accountcreate"],
+    category: "account",
+  },
+  {
+    id: "accountCreate:daterange",
+    label: "계정 생성 - 사용 기간",
+    description: "계정 생성 모달에 사용 기간 선택 필드 추가",
+    suggestedTypes: ["accountcreate"],
+    category: "account",
+  },
 
   // 기타 필드
   {
