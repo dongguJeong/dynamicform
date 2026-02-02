@@ -10,6 +10,7 @@ import { RadioField } from "./RadioField";
 import { ModalSelectField } from "./ModalSelectField";
 import { InputField } from "./InputField";
 import { ServerGroupChangeField } from "./ServerGroupChangeField";
+import { AccountCreateField } from "./AccountCreateField";
 
 interface FormFieldComponentProps {
   field: FormField;
@@ -132,6 +133,16 @@ export const FormFieldComponent: React.FC<FormFieldComponentProps> = ({
       case "servergroupchange":
         return (
           <ServerGroupChangeField
+            field={field}
+            value={value}
+            hasError={hasError}
+            onChange={onChange}
+          />
+        );
+
+      case "accountcreate":
+        return (
+          <AccountCreateField
             field={field}
             value={value}
             hasError={hasError}

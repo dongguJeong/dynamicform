@@ -334,6 +334,69 @@ export const FORM_CODES: FormCode[] = [
       },
     ],
   },
+  {
+    code: "account-creation",
+    name: "계정 생성 신청",
+    description: "새로운 계정 생성을 신청하는 양식",
+    requiredFields: [
+      {
+        id: "serverSelect",
+        type: "apiselect",
+        label: "서버 선택",
+        required: true,
+        helperText: "계정을 생성할 서버를 선택하세요",
+        options: {
+          placeholder: "서버를 선택하세요",
+          apiUrl: "/api/servers/list",
+          apiLabelKey: "serverName",
+          apiValueKey: "serverId",
+        },
+      },
+      {
+        id: "accountCreation",
+        type: "accountcreate",
+        label: "계정 생성",
+        required: true,
+        helperText: "생성할 계정 정보를 입력하세요",
+        options: {
+          accountTypes: [
+            { label: "관리자", value: "admin" },
+            { label: "일반 사용자", value: "user" },
+            { label: "읽기 전용", value: "readonly" },
+          ],
+          accountCreateModalFields: {
+            ip: true,
+            textarea: true,
+            accountSelect: true,
+            daterange: true,
+          },
+          relatedAccountsApiUrl: "/api/accounts/list",
+        },
+      },
+    ],
+    optionalFieldIds: [
+      "requestTitle",
+      "requestDescription",
+      "priority",
+      "department",
+      "requesterName",
+      "requesterEmail",
+      "requesterPhone",
+      "notes",
+      "urgency",
+    ],
+    apiConfigs: [
+      {
+        url: "/api/account/creation",
+        fields: ["serverSelect", "accountCreation"],
+        fieldMapping: {
+          serverSelect: "serverId",
+          accountCreation: "accounts",
+        },
+        method: "POST",
+      },
+    ],
+  },
 ];
 
 // 폼 코드로 필드 찾기

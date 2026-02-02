@@ -12,7 +12,8 @@ export type FieldType =
   | "daterange"
   | "modalselect"
   | "apiselect" // API에서 옵션을 가져오는 select
-  | "servergroupchange"; // 서버 그룹 변경 요청
+  | "servergroupchange" // 서버 그룹 변경 요청
+  | "accountcreate"; // 계정 생성
 
 export interface SelectOption {
   label: string;
@@ -36,6 +37,27 @@ export interface ServerGroupChangeValue {
   changes: ServerGroupChange[];
 }
 
+export interface AccountCreateModalFields {
+  ip?: boolean;
+  textarea?: boolean;
+  accountSelect?: boolean;
+  daterange?: boolean;
+}
+
+export interface AccountCreateItem {
+  id: string;
+  accountName: string;
+  accountType?: string;
+  ip?: string;
+  description?: string;
+  relatedAccounts?: string[];
+  usagePeriod?: DateRangeValue;
+}
+
+export interface AccountCreateValue {
+  accounts: AccountCreateItem[];
+}
+
 export interface FieldOptions extends React.CSSProperties {
   // 폼 필드 기본 옵션
   placeholder?: string;
@@ -56,6 +78,11 @@ export interface FieldOptions extends React.CSSProperties {
   apiUrl?: string; // 옵션을 가져올 API URL
   apiLabelKey?: string; // 응답 데이터에서 라벨로 사용할 키 (기본: "label")
   apiValueKey?: string; // 응답 데이터에서 값으로 사용할 키 (기본: "value")
+
+  // accountcreate용
+  accountCreateModalFields?: AccountCreateModalFields; // 모달에 표시할 필드 옵션
+  accountTypes?: SelectOption[]; // 계정 유형 옵션
+  relatedAccountsApiUrl?: string; // 계정 선택용 API URL
 
   // HTML 속성
   disabled?: boolean;
