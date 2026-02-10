@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { FormFieldComponent } from "./FormFieldComponent";
 import { ApprovalFlowModal } from "./ApprovalFlowModal";
 import "./DynamicForm.css";
@@ -13,6 +13,9 @@ interface DynamicFormProps {
   enableApprovalFlow?: boolean; // 승인 플로우 기능 활성화 여부
   employeeApiUrl?: string; // 직원 목록 API URL
   readOnly?: boolean; // 읽기 전용 모드
+  unicode?: boolean; // true면 제어 컴포넌트로 동작 (부모에서 상태 관리)
+  value?: FormDataType; // unicode: true일 때 부모에서 받는 formData
+  onChange?: (data: FormDataType) => void; // unicode: true일 때 부모로 formData 전달
 }
 
 export const DynamicForm: React.FC<DynamicFormProps> = ({
@@ -22,8 +25,17 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   enableApprovalFlow = false,
   employeeApiUrl = "http://localhost:3001/api/employees/list",
   readOnly = false,
+  unicode = false,
+  value,
+  onChange,
 }) => {
   const [formData, setFormData] = useState<FormDataType>(() => {
+    // unicode: true이고 value가 있으면 부모에서 받은 값 사용
+    if (unicode && value) {
+      return value;
+    }
+
+    // 기본 initialData 생성
     const initialData: FormDataType = {};
     config.content.forEach((field) => {
       if (field.type === "daterange") {
@@ -52,12 +64,29 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
   const { validateForm, validateField } = useFormValidation();
   const { submitForm, axiosInstance } = useApiSubmit();
 
+  // unicode 모드일 때 부모의 value 변경 시 formData 동기화
+  useEffect(() => {
+    if (unicode && value) {
+      setFormData(value);
+    }
+  }, [unicode, value]);
+
   const handleFieldChange = useCallback(
     (fieldId: string, value: any) => {
-      setFormData((prev) => ({
-        ...prev,
+      const newFormData = {
+        ...formData,
         [fieldId]: value,
-      }));
+      };
+
+      // unicode 모드일 때: 부모 컴포넌트로 데이터 전달
+      if (unicode) {
+        if (onChange) {
+          onChange(newFormData);
+        }
+      } else {
+        // 일반 모드: 내부 상태 업데이트
+        setFormData(newFormData);
+      }
 
       // 터치된 필드는 실시간 검증
       if (touched.has(fieldId)) {
@@ -78,7 +107,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
         }
       }
     },
-    [touched, config.content, validateField],
+    [formData, touched, config.content, validateField, unicode, onChange],
   );
 
   const handleSubmit = useCallback(
@@ -252,7 +281,7 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
           </div>
         ))}
 
-        {!readOnly && (
+        {!readOnly && !unicode && (
           <div className="form-button-group">
             <button
               type="submit"

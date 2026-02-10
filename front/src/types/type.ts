@@ -118,6 +118,10 @@ export interface ApiConfig {
   // 필드 ID를 API body 속성명으로 매핑 (선택사항)
   // 예: { requestTitle: 'title', env: 'environment' }
   fieldMapping?: Record<string, string>;
+  // 데이터 변환 함수 (복잡한 객체 구조 변환 시 사용)
+  // formData를 받아서 API 요청 body로 변환
+  // 이 함수가 있으면 fieldMapping과 fields는 무시됨
+  dataTransformer?: (formData: FormData) => ApiRequestBody;
   // HTTP 메서드
   method?: "POST" | "PUT" | "PATCH";
 }

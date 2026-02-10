@@ -73,16 +73,24 @@ export const useApiSubmit = (baseURL?: string, timeout: number = 10000) => {
         );
 
         try {
-          // 이 API에 필요한 필드들만 추출
-          const apiBody: ApiRequestBody = {};
+          // dataTransformer가 있으면 이를 사용하여 전체 formData 변환
+          let apiBody: ApiRequestBody;
 
-          apiConfig.fields.forEach((fieldId) => {
-            if (fieldId in formData) {
-              // fieldMapping이 있으면 필드명을 변환
-              const apiKey = apiConfig.fieldMapping?.[fieldId] || fieldId;
-              apiBody[apiKey] = formData[fieldId];
-            }
-          });
+          if (apiConfig.dataTransformer) {
+            // 커스텀 변환 함수 사용
+            apiBody = apiConfig.dataTransformer(formData);
+            console.log(`🔄 ${apiConfig.url} dataTransformer 사용`);
+          } else {
+            // 기존 방식: fields와 fieldMapping 사용
+            apiBody = {};
+            apiConfig.fields.forEach((fieldId) => {
+              if (fieldId in formData) {
+                // fieldMapping이 있으면 필드명을 변환
+                const apiKey = apiConfig.fieldMapping?.[fieldId] || fieldId;
+                apiBody[apiKey] = formData[fieldId];
+              }
+            });
+          }
 
           console.log(`📨 ${apiConfig.url} 요청 바디:`, apiBody);
 
