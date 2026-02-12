@@ -8,6 +8,8 @@ import FormCodeExamples from "./pages/FormCodeExamples";
 import SubmissionList from "./pages/SubmissionList";
 import SubmissionDetail from "./pages/SubmissionDetail";
 import MyApprovals from "./pages/MyApprovals";
+import MultipleForms from "./pages/MultipleForms";
+import MultiAccountForms from "./pages/MultiAccountForms";
 
 const App: React.FC = () => {
   return (
@@ -27,6 +29,12 @@ const App: React.FC = () => {
                 </Nav.Link>
                 <Nav.Link as={Link} to="/form-codes">
                   폼 코드 예제
+                </Nav.Link>
+                <Nav.Link as={Link} to="/multiple-forms">
+                  다중 폼
+                </Nav.Link>
+                <Nav.Link as={Link} to="/multi-account-forms">
+                  다중 계정 신청
                 </Nav.Link>
                 <Nav.Link as={Link} to="/form-builder">
                   폼 빌더
@@ -49,6 +57,8 @@ const App: React.FC = () => {
         <Routes>
           <Route path="/" element={<Examples />} />
           <Route path="/form-codes" element={<FormCodeExamples />} />
+          <Route path="/multiple-forms" element={<MultipleForms />} />
+          <Route path="/multi-account-forms" element={<MultiAccountForms />} />
           <Route path="/form-builder" element={<FormBuilder />} />
           <Route path="/form-test" element={<FormTest />} />
           <Route path="/submissions" element={<SubmissionList />} />
